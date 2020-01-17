@@ -11,9 +11,14 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
   var output_ = document.querySelector(outputContainer);
 
   const CMDS_ = [
-    'cat', 'clear', 'clock', 'date', 'echo', 'help', 'uname', 'whoami'
+    'get', 'help'
   ];
-  
+  const CMDS_DESC = [
+    'get key',
+    'set key value [EX|PX seconds|milliseconds] [NX|XX]',
+    'del key',
+    'ttl key'
+  ]
   var fs_ = null;
   var cwd_ = null;
   var history_ = [];
@@ -62,14 +67,56 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
       }
     }
   }
-
+  function find(str,cha,num){
+    var x=str.indexOf(cha);
+    for(var i=0;i<num;i++){
+        x=str.indexOf(cha,x+1);
+    }
+    return x;
+    }
+  function getCmdDesc(cmd){
+    var commandArr = cmd.split(" ");
+    var newCommandArr = [];
+    for(var k = 0;k<commandArr.length;k++){
+      if(commandArr[k].trim()!=""){
+        newCommandArr.push(commandArr[k]);
+      }
+    }
+    var spaceCount = newCommandArr.length;
+    for(var i=0;i<CMDS_DESC.length;i++){
+      if(CMDS_DESC[i].indexOf(commandArr[0]) ==0){
+        var index = find(CMDS_DESC[i]," ",spaceCount-1);
+        if(index>=0){
+          return CMDS_DESC[i].substr(index);
+        }
+        
+      }
+    }
+    return null;
+  }
   //
+  function buildSpace(count){
+    var spaces = "";
+    for(var i=0;i<count;i++){
+      spaces=spaces + "&nbsp;";
+    }
+    return spaces;
+  }
   function processNewCommand_(e) {
 
     if (e.keyCode == 9) { // tab
       e.preventDefault();
       // Implement tab suggest.
-    } else if (e.keyCode == 13) { // enter
+    } else if(e.keyCode == 32){
+      var input = $("input[class =cmdline]:last").val();
+       var cmdDesc = getCmdDesc(input.toLowerCase());
+       if(cmdDesc !=null){
+        $('.placeholder:last').html(buildSpace(input.length)+cmdDesc);
+       }else{
+        $('.placeholder:last').html("");
+       }
+      
+    }else if (e.keyCode == 13) { // enter
       // Save shell history.
       if (this.value) {
         history_[history_.length] = this.value;
@@ -92,48 +139,11 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
         var cmd = args[0].toLowerCase();
         args = args.splice(1); // Remove cmd from arg list.
       }
+      $('.placeholder:last').html("");
 
       switch (cmd) {
-        case 'cat':
-          var url = args.join(' ');
-          if (!url) {
-            output('Usage: ' + cmd + ' https://s.codepen.io/...');
-            output('Example: ' + cmd + ' https://s.codepen.io/AndrewBarfield/pen/LEbPJx.js');
-            break;
-          }
-          $.get( url, function(data) {
-            var encodedStr = data.replace(/[\u00A0-\u9999<>\&]/gim, function(i) {
-               return '&#'+i.charCodeAt(0)+';';
-            });
-            output('<pre>' + encodedStr + '</pre>');
-          });          
-          break;
-        case 'clear':
-          output_.innerHTML = '';
-          this.value = '';
-          return;
-        case 'clock':
-          var appendDiv = jQuery($('.clock-container')[0].outerHTML);
-          appendDiv.attr('style', 'display:inline-block');
-          output_.appendChild(appendDiv[0]);
-          break;
-        case 'date':
-          output( new Date() );
-          break;
-        case 'echo':
-          output( args.join(' ') );
-          break;
-        case 'help':
-          output('<div class="ls-files">' + CMDS_.join('<br>') + '</div>');
-          break;
-        case 'uname':
-          output(navigator.appVersion);
-          break;
-        case 'whoami':
-          var result = "<img src=\"" + codehelper_ip["Flag"]+ "\"><br><br>";
-          for (var prop in codehelper_ip)
-            result += prop + ": " + codehelper_ip[prop] + "<br>";
-          output(result);
+        case 'get':
+          output(cmd);
           break;
         default:
           if (cmd) {
@@ -143,6 +153,8 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 
       window.scrollTo(0, getDocHeight_());
       this.value = ''; // Clear/setup line for next input.
+    }else{
+      $('.placeholder:last').html("");
     }
   }
 
