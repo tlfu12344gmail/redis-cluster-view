@@ -4,8 +4,7 @@
   "description": "redis-cluster-view",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "pack": "electron-packager . redis-cluster-view --mac --out ./ --arch=x64 --app-version=0.0.1 --electron-version=2.0.0"
+    "start": "electron ."
   },
   "repository": "https://github.com/tlfu12344gmail/redis-cluster-view",
   "keywords": [
@@ -17,7 +16,8 @@
   "author": "tlfu",
   "license": "CC0-1.0",
   "devDependencies": {
-    "electron": "7.1.8"
+    "electron": "7.1.8",
+    "electron-builder": "^22.2.0"
   },
   "dependencies": {
     "ioredis": "^4.14.1",
