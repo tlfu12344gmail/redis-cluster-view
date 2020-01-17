@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <title>HTML5 Web Terminal</title>
+    <link href="./css/terminal.css"
+          rel="stylesheet" type="text/css" />
+      <!--<script src="http://www.codehelper.io/api/ips/?js"></script>-->
+    <script src="./js/jquery-2.1.1.min.js"></script>
+    <script src="./js/terminal.js"></script>     
+     <style>
+     ::selection {
+  background: #FF5E99;
+}
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-size: 11pt;
+  font-family: Inconsolata, monospace;
+  color: white;
+  background-color: black;
+}
+#container {
+  padding: .1em 1.5em 1em 1em;
+}
+#container output {
+  clear: both;
+  width: 100%;
+}
+#container output h3 {
+  margin: 0;
+}
+#container output pre {
+  margin: 0;
+}
+.input-line {
+  display: -webkit-box;
+  -webkit-box-orient: horizontal;
+  -webkit-box-align: stretch;
+  display: -moz-box;
+  -moz-box-orient: horizontal;
+  -moz-box-align: stretch;
+  display: box;
+  box-orient: horizontal;
+  box-align: stretch;
+  clear: both;
+}
+.input-line > div:nth-child(2) {
+  -webkit-box-flex: 1;
+  -moz-box-flex: 1;
+  box-flex: 1;
+}
+.prompt {
+  white-space: nowrap;
+  color: #96b38a;
+  margin-right: 7px;
+  display: -webkit-box;
+  -webkit-box-pack: center;
+  -webkit-box-orient: vertical;
+  display: -moz-box;
+  -moz-box-pack: center;
+  -moz-box-orient: vertical;
+  display: box;
+  box-pack: center;
+  box-orient: vertical;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+.cmdline {
+  outline: none;
+  background-color: transparent;
+  margin: 0;
+  width: 100%;
+  font: inherit;
+  border: none;
+  color: inherit;
+}
+.ls-files {
+  height: 45px;
+  -webkit-column-width: 100px;
+  -moz-column-width: 100px;
+  -o-column-width: 100px;
+  column-width: 100px;
+}
+
+
+/************************************************************/
+/* SVG Clock                                                */
+/************************************************************/
+
+.clock-container {
+  display: none /*inline-block*/;
+  position: relative;
+  width: 200px;
+  vertical-align: middle;
+  overflow: hidden;
+} 
+
+.clock-container > svg > circle {
+  stroke-width: 2px;
+  stroke: #fff;
+}
+
+.hour, .min, .sec { 
+  stroke-width: 1px;
+  fill: #333;
+  stroke: #555;
+}
+
+.sec {
+   stroke: #f55;
+}
+
+
+     </style>     
+    <script>
+    $(function() {
+  
+  // Set the command-line prompt to include the user's IP Address
+  //$('.prompt').html('[' + codehelper_ip["IP"] + '@HTML5] # ');
+    $('.prompt').html('[user@HTML5] # ');
+
+  // Initialize a new terminal object
+  var term = new Terminal('#input-line .cmdline', '#container output');
+  //term.init();
+});
+</script>      
+  </head>
+  <body>
+    <div id="container">
+      <output></output>
+      <div id="input-line" class="input-line">
+        <div class="prompt"></div><div><input class="cmdline" autofocus placeholder="input"/></div>
+      </div>
+    </div>
+    
+   
+    
+    <div class="clock-container">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="45"/>
+        <g>
+          <rect class="hour" x="47.5" y="12.5" width="5" height="40" rx="2.5" ry="2.55" />
+          <rect class="min" x="48.5" y="12.5" width="3" height="40" rx="2" ry="2"/>
+          <line class="sec" x1="50" y1="50" x2="50" y2="16" />
+        </g>
+      </svg>
+    </div>
+    
+  </body>
+</html>
