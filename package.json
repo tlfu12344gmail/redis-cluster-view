@@ -1,20 +1,19 @@
 {
-  "name": "electron-quick-start",
+  "name": "redis-cluster-view",
   "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "description": "redis-cluster-view",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
   },
-  "repository": "https://github.com/electron/electron-quick-start",
+  "repository": "https://github.com/tlfu12344gmail/redis-cluster-view",
   "keywords": [
-    "Electron",
-    "quick",
-    "start",
-    "tutorial",
-    "demo"
+    "redis",
+    "cluster",
+    "view",
+    "node"
   ],
-  "author": "GitHub",
+  "author": "tlfu",
   "license": "CC0-1.0",
   "devDependencies": {
     "electron": "7.1.8"
