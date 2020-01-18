@@ -143,7 +143,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
 
       switch (cmd) {
         case 'get':
-          output(cmd);
+          output(args);
           break;
         default:
           if (cmd) {
