@@ -1,29 +1,22 @@
+const redisCommand = require('./redis-command.js')
 var util = util || {};
 util.toArray = function(list) {
   return Array.prototype.slice.call(list || [], 0);
 };
 
-var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
+var Terminal = Terminal || function(cmdLineContainer, outputContainer,cluster,redis) {
   window.URL = window.URL || window.webkitURL;
   window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
 
   var cmdLine_ = document.querySelector(cmdLineContainer);
   var output_ = document.querySelector(outputContainer);
-
-  const CMDS_ = [
-    'get', 'help'
-  ];
-  const CMDS_DESC = [
-    'get key',
-    'set key value [EX|PX seconds|milliseconds] [NX|XX]',
-    'del key',
-    'ttl key'
-  ]
   var fs_ = null;
   var cwd_ = null;
   var history_ = [];
   var histpos_ = 0;
   var histtemp_ = 0;
+  var command = new redisCommand.RedisCommand(cluster,redis);
+  const CMDS_DESC = command.CMDS_DESC;
 
   window.addEventListener('click', function(e) {
     cmdLine_.focus();
@@ -33,6 +26,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
   cmdLine_.addEventListener('keydown', historyHandler_, false);
   cmdLine_.addEventListener('keydown', processNewCommand_, false);
 
+  
   //
   function inputTextClick_(e) {
     this.value = this.value;
@@ -140,24 +134,31 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
         args = args.splice(1); // Remove cmd from arg list.
       }
       $('.placeholder:last').html("");
-
-      switch (cmd) {
-        case 'get':
-          output(args);
-          break;
-        default:
-          if (cmd) {
-            output(cmd + ': command not found');
-          }
-      };
-
+      
+      command.parseCmd(cmd,args).then(function (data){
+        dealWithRedisCallback(data);
+      });
+      
       window.scrollTo(0, getDocHeight_());
       this.value = ''; // Clear/setup line for next input.
+      $('.placeholder').html("");
     }else{
       $('.placeholder:last').html("");
     }
   }
 
+  
+  function dealWithRedisCallback(data){
+    if(data.err && data.err.message){
+      output(data.err);
+      return
+    }
+    if(data.err){
+      output(data.err);
+    }else{
+      output(data.res);
+    }
+  }
   //
   function formatColumns_(entries) {
     var maxName = entries[0].name;
@@ -180,6 +181,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
   //
   function output(html) {
     output_.insertAdjacentHTML('beforeEnd', '<p>' + html + '</p>');
+    window.scrollTo(0, getDocHeight_());
   }
 
   // Cross-browser impl to get document's height.
@@ -200,3 +202,6 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
     output: output
   }
 };
+module.exports={
+  Terminal:Terminal
+}

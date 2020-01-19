@@ -1,119 +1,108 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html>
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-    <title>HTML5 Web Terminal</title>
+    <title>redis-cluster-view</title>
     <link href="./css/terminal.css"
           rel="stylesheet" type="text/css" />
       <!--<script src="http://www.codehelper.io/api/ips/?js"></script>-->
-    <script src="./js/jquery-2.1.1.min.js"></script>
-    <script src="./js/terminal.js"></script>     
-     <style>
-     ::selection {
-  background: #FF5E99;
-}
-html, body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
+      
+      <script>
+      window.$ = window.jQuery = require("./js/jquery-2.1.1.min.js");
+      window.term = require("./js/terminal.js");
   
-}
-body {
-  overflow-x: hidden;
-  font-size: 11pt;
-  font-family: Inconsolata, monospace;
-  color: white;
-  background-color: black;
-}
-#container {
-  padding: .1em 1.5em 1em 1em;
-}
-#container output {
-  clear: both;
-  width: 100%;
-}
-#container output h3 {
-  margin: 0;
-}
-#container output pre {
-  margin: 0;
-}
-.input-line {
-  display: -webkit-box;
-  -webkit-box-orient: horizontal;
-  -webkit-box-align: stretch;
-  display: -moz-box;
-  -moz-box-orient: horizontal;
-  -moz-box-align: stretch;
-  display: box;
-  box-orient: horizontal;
-  box-align: stretch;
-  clear: both;
-}
-.input-line > div:nth-child(2) {
-  -webkit-box-flex: 1;
-  -moz-box-flex: 1;
-  box-flex: 1;
-}
-.prompt {
-  white-space: nowrap;
-  color: #96b38a;
-  margin-right: 7px;
-  display: -webkit-box;
-  -webkit-box-pack: center;
-  -webkit-box-orient: vertical;
-  display: -moz-box;
-  -moz-box-pack: center;
-  -moz-box-orient: vertical;
-  display: box;
-  box-pack: center;
-  box-orient: vertical;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  user-select: none;
-}
-.cmdline {
-  position: absolute;
-  outline: none;
-  background-color: transparent;
-  margin: 0;
-  width: 100%;
-  font: inherit;
-  border: none;
-  color: inherit;
-  z-index: 99;
-}
-.ls-files {
-  height: 45px;
-  -webkit-column-width: 100px;
-  -moz-column-width: 100px;
-  -o-column-width: 100px;
-  column-width: 100px;
-}
+      </script>
 
-.placeholder {
-  position: absolute;
-  width: 100%;
-  z-index: -1;
-  color: #999;
-}
-
-
-     </style>     
-    <script>
+       
+    <script> 
+      var  Redis = require('ioredis');
+      var term = require('./js/terminal.js');
+      var cluserOption={
+        clusterRetryStrategy:function(times) {
+            var delay = Math.min(times * 50, 2000);
+            return delay;
+          }
+    };
+      var profile = "test"; 
+      var  cluster=new Redis.Cluster(getTestConfig(),cluserOption);
+      var redis = new Redis(getDevConfig());
     $(function() {
   
   // Set the command-line prompt to include the user's IP Address
   //$('.prompt').html('[' + codehelper_ip["IP"] + '@HTML5] # ');
-    $('.prompt').html('[redis-cluster-view] # ');
+    $('.prompt').html('[redis-cluster-view:'+profile+'] # ');
 
   // Initialize a new terminal object
-  var term = new Terminal('#input-line .cmdline', '#container output');
+    term.Terminal('#input-line .cmdline', '#container output',cluster,null);
   //term.init();
-});
+  });
+
+function getDevConfig(){
+var option = {
+  port: 16379, // Redis port
+  host: "10.1.1.97", // Redis host
+  password: "HN6Di0bdsIoTTb1A",
+  db: 0,
+  maxRetriesPerRequest: 20,
+  retryStrategy: function(times) {
+    var delay = Math.min(times * 50, 2000);
+    return delay;
+  }
+}
+return option;
+}
+
+function getProConfig(){
+    var redis_members = [{
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.34.254'
+      }, {
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.33.38'
+      }, {
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.33.105'
+      }]
+      return redis_members;
+}
+function getUatConfig(){
+    var redis_members = [{
+        port: 6380,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      }, {
+        port: 6385,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      }, {
+        port: 6381,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      }]
+      return redis_members;
+}
+function getTestConfig(){
+    var redis_members = [{
+        port: 6379,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      }, {
+        port: 6380,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      }, {
+        port: 6381,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      }]
+      return redis_members;
+}
 </script>      
   </head>
   <body>
