@@ -1,0 +1,11 @@
+.panel-header, .panel-body {
+  border-color: white;
+}
+.tabs-panels {
+  margin: 0px;
+  padding: 0px;
+  border-width: 0; 
+  border-style: solid;
+  border-top-width: 0;
+  overflow: hidden;
+}

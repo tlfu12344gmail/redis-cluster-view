@@ -9,8 +9,9 @@ let mainWindow
 function createWindow () {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    icon: './img/redis-open.png',
+    width: 1000,
+    height: 700,
     webPreferences: {
       //preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true
@@ -50,6 +51,8 @@ app.on('activate', function () {
   // dock icon is clicked and there are no other windows open.
   if (mainWindow === null) createWindow()
 })
+
+
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

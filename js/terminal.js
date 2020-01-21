@@ -1,10 +1,16 @@
 const redisCommand = require('./redis-command.js')
+const s = require('./store.js');
+const  Redis = require('ioredis');
 var util = util || {};
+var currentProfile = null;
 util.toArray = function(list) {
   return Array.prototype.slice.call(list || [], 0);
 };
-
-var Terminal = Terminal || function(cmdLineContainer, outputContainer,cluster,redis) {
+String.prototype.endWith=function(endStr){
+  var d=this.length-endStr.length;
+  return (d>=0&&this.lastIndexOf(endStr)==d)
+}
+var Terminal = Terminal || function(cmdLineContainer, outputContainer) {
   window.URL = window.URL || window.webkitURL;
   window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
 
@@ -15,7 +21,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,cluster,re
   var history_ = [];
   var histpos_ = 0;
   var histtemp_ = 0;
-  var command = new redisCommand.RedisCommand(cluster,redis);
+  var command = redisCommand.RedisCommand();
   const CMDS_DESC = command.CMDS_DESC;
 
   window.addEventListener('click', function(e) {
@@ -102,14 +108,13 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,cluster,re
       e.preventDefault();
       // Implement tab suggest.
     } else if(e.keyCode == 32){
-      var input = $("input[class =cmdline]:last").val();
+      var input = $("input[class =cmdline]:last").val()+" ";
        var cmdDesc = getCmdDesc(input.toLowerCase());
        if(cmdDesc !=null){
-        $('.placeholder:last').html(buildSpace(input.length)+cmdDesc);
+        $('.placeholder:last').html(buildSpace(input.length*1.5)+cmdDesc);
        }else{
         $('.placeholder:last').html("");
        }
-      
     }else if (e.keyCode == 13) { // enter
       // Save shell history.
       if (this.value) {
@@ -134,12 +139,14 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,cluster,re
         args = args.splice(1); // Remove cmd from arg list.
       }
       $('.placeholder:last').html("");
-      
-      command.parseCmd(cmd,args).then(function (data){
-        dealWithRedisCallback(data);
-      });
-      
-      window.scrollTo(0, getDocHeight_());
+      if(cmd=='help'){
+        help();
+      }else{
+        command.parseCmd(cmd,args).then(function (data){
+          dealWithRedisCallback(data);
+        });
+      }
+      $("#south").scrollTop($("#south")[0].scrollHeight);
       this.value = ''; // Clear/setup line for next input.
       $('.placeholder').html("");
     }else{
@@ -147,7 +154,12 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,cluster,re
     }
   }
 
-  
+  function help(){
+    var html="show cons ----show exist connections<br>"+
+              "use ${con} ----use the connection which you select<br>";
+      output(html);        
+    
+  }
   function dealWithRedisCallback(data){
     if(data.err && data.err.message){
       output(data.err);
@@ -156,8 +168,105 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,cluster,re
     if(data.err){
       output(data.err);
     }else{
-      output(data.res);
+      if(data.res && data.res=== data.res+""&& data.res == "cons"){
+        showConnections();
+      }else if(data.res && data.res=== data.res+""&& data.res.indexOf("use:")==0){
+        useConnection(data.res.split(':')[1],0);
+      }else if(data.res && data.res=== data.res+""&& data.res == "clear"){
+        $('output').empty();
+      }else if(data.res && data.res=== data.res+""&& data.res == "dbs"){
+        showDbs();
+      }else if(data.res && data.res=== data.res+""&& data.res.indexOf("select:")==0){
+        useDb(data.res.split(':')[1]);
+      }else if(data.res && Array.isArray(data.res)){
+         var newArr = data.res;
+           if(newArr.length<=500){
+             newArr = newArr.sort()
+             var outputShow = ""
+              for(var i=0;i<newArr.length;i++){
+                var j =i+1;
+                outputShow=outputShow+j+") "+newArr[i]+"<br>"; 
+              }
+              output("size:"+newArr.length);
+              output(outputShow);
+              return;
+          }
+          output("size:"+newArr.length);
+          output(JSON.stringify(newArr));
+      }
+      else{
+        output(data.res);
+      }
+      
     }
+  }
+  function useDb(db){
+    if(db>=0&&db<=15){
+      useConnection(currentProfile,db);
+    }else{
+    output("illegal db!");
+    }
+   
+  }
+  function showDbs(){
+   if(currentProfile==null){
+    output("please connect first!");
+   }else{
+    var config = s.Store().get("config");
+    var useCon = null;
+    for(var i=0;i<config.length;i++){
+      if(config[i].profile == currentProfile){
+        useCon = config[i].connection;
+        break;
+      }
+    }
+
+    if(useCon!=null && Array.isArray(useCon)){
+      output("0");
+    }else if(useCon!=null && !Array.isArray(useCon)){
+      output("0<br>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>");
+    }
+   }
+  }
+  function useConnection(profile,db){
+    var config = s.Store().get("config");
+    var useCon = null;
+    for(var i=0;i<config.length;i++){
+      if(config[i].profile == profile){
+        useCon = config[i].connection;
+        break;
+      }
+    }
+    if(useCon!=null && Array.isArray(useCon)){
+      const cluserOption={
+        clusterRetryStrategy:function(times) {
+            var delay = Math.min(times * 50, 2000);
+            return delay;
+          }  
+    };
+    const cluster=new Redis.Cluster(useCon,cluserOption);
+    redisCommand.RedisCommand().init(cluster,null);
+    $('.prompt').html('['+profile+']# ');
+    currentProfile = profile;
+    }else if(useCon!=null && !Array.isArray(useCon)){
+      useCon.db = db;
+      const redis = new Redis(useCon);
+      redisCommand.RedisCommand().init(null,redis);
+      $('.prompt').html('['+profile+':'+useCon.db+']# ');
+      currentProfile = profile;
+    }else{
+      output('not exist connection:'+profile);
+    }
+
+  }
+
+  function showConnections(){
+    var config = s.Store().get("config");
+    var cons="";
+    for(var i=0;i<config.length;i++){
+      cons = cons+config[i].profile+"<br>"
+    }
+    output(cons);
   }
   //
   function formatColumns_(entries) {
@@ -181,7 +290,8 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,cluster,re
   //
   function output(html) {
     output_.insertAdjacentHTML('beforeEnd', '<p>' + html + '</p>');
-    window.scrollTo(0, getDocHeight_());
+    //window.scrollTo(0, getDocHeight_());
+    $("#south").scrollTop($("#south")[0].scrollHeight);
   }
 
   // Cross-browser impl to get document's height.
