@@ -74,7 +74,6 @@ html, body {
 .prompt {
   white-space: nowrap;
   color: #96b38a;
-  margin-right: 7px;
   display: -webkit-box;
   -webkit-box-pack: center;
   -webkit-box-orient: vertical;
@@ -98,6 +97,7 @@ html, body {
   border: none;
   color: inherit;
   z-index: 99;
+  color: white;
 }
 .ls-files {
   height: 45px;
@@ -118,5 +118,13 @@ p {
   margin-block-end: 0.1em;
   margin-inline-start: 0px;
   margin-inline-end: 0px;
+  color: white;
 }
-
+span{
+	user-select:none;
+}
+.panel-body-cus {
+  /* overflow: auto; */
+  border-top-width: 0;
+  padding: 0;
+}

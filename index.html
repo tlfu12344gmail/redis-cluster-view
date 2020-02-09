@@ -11,7 +11,8 @@
     <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/icon.css">
     <link href="./css/terminal.css" rel="stylesheet" type="text/css" />
     <link href="./css/easyui-cus.css" rel="stylesheet" type="text/css" />
-	  <!-- <link rel="stylesheet" type="text/css" href="./jquery-easyui/demo/demo.css"> -->
+    <link rel="import" href="./edit.html">
+	 <!-- <link rel="stylesheet" type="text/css" href="./jquery-easyui/demo/demo.css"> -->
       <!--<script src="http://www.codehelper.io/api/ips/?js"></script>-->
       
       <script>
@@ -24,16 +25,739 @@
       var profile = "no-connection"; 
       var store = require('./js/store.js');
       var term = require('./js/terminal.js');
-      setRedisConfig();
-    function setRedisConfig(){
-      store.Store().set("config",getRedisConfig());
-    }  
+      const redisCommand = require('./js/redis-command.js')
+      const command = redisCommand.RedisCommand();
+      const  Redis = require('ioredis');
+      var content = [];
+      var currentDb = -1;
+      var isShowTree = false;   
+      var currentTabIndex =0;
+      var defautKeysSize =1000;
+    //   setRedisConfig();
+    // function setRedisConfig(){
+    //   store.Store().set("config",getRedisConfig());
+    // }  
     $(function() {
-    $('.prompt').html('[disConnected]# ');
-    term.Terminal('#input-line .cmdline', '#container output');
+    resize();
+    initTab();
+    initUIComps();
   });
   
- function getRedisConfig(){
+  function initTerminal(){
+      term.Terminal('#input-line'+currentTabIndex+' .cmdline', '#container'+currentTabIndex+' output',currentTabIndex);
+      $('#input-line'+currentTabIndex+' .prompt').html('use command "help" to show usage>');
+  }
+  function initTab(){
+    $('#tabs').tabs('add',{
+    title:'terminal-0',
+    content:getTabContent(),
+    closable:false,
+    //cache:false,
+    tools:[{
+		iconCls:'icon-add',
+		handler:function(){
+			addTab();
+    }
+    }]
+    });
+    initTerminal(0);
+    $('#tabs').tabs({
+      onSelect:function(title,index){
+        cssRisize();
+      }
+    });
+    //panel-tool-restore
+   $("#tabs .tabs-wrap").append('<div class="panel-tool"><a href="javascript:;" class="panel-tool-max"></a><a href="javascript:;" class="layout-button-down"></a></div>');
+   $("#tabs .tabs-wrap .panel-tool-max").bind('click',function(e){
+     if($(this).hasClass('panel-tool-restore')){
+      $(this).removeClass('panel-tool-restore');
+      $('#centerCC').layout('panel', 'south').panel('resize',{height:360});
+      $('#centerCC').layout('resize');
+     }else{
+      $(this).addClass('panel-tool-restore');
+      //$('#centerCC').layout().panel('south').resize({'height':500});
+      $('#centerCC').layout('panel', 'south').panel('resize',{height:$("#centerCC").css('height')});
+      $('#centerCC').layout('resize');
+     }
+   });
+   $("#tabs .tabs-wrap a[class*='layout-button']").bind('click',function(e){
+     var display =$('#south').css('display');
+     if($(this).hasClass('layout-button-down')||display != 'none'){
+      $(this).removeClass('layout-button-down');
+      $(this).addClass('layout-button-up');
+      $('#centerCC').layout('collapse','south');
+     }else{
+      $(this).removeClass('layout-button-up');
+      $(this).addClass('layout-button-down');
+      $('#centerCC').layout('expand','south');
+     }
+   });
+  }
+  
+  function getTabContent(){
+   return '<div title="Terminal"  style="background-color: black;">'+
+                '<div id="container'+currentTabIndex+'" style="overflow-y: auto;height:360px;width: 100%;">'+
+                  '<output></output>'+
+                  '<div id="input-line'+currentTabIndex+'" class="input-line">'+
+                   '<div class="prompt"></div>'+
+                    '<div style="position: relative;">'+
+                      '<input  class="cmdline"/><span class="placeholder"></span>'+
+                    '</div>'+
+                  '</div>'+
+                '</div>'+
+             '</div> ';
+  }
+  function addTab(){
+    currentTabIndex++;
+    $('#tabs').tabs('add',{
+    title:'terminal-'+currentTabIndex,
+    content:getTabContent(),
+    closable:true
+   // cache:false
+    });
+    initTerminal();
+  }
+  $.extend($.fn.panel.methods, {
+      showMask: function(jq, msg){
+      return jq.each(function(){
+      var pal = $(this).panel('panel');
+      if (pal.css('position').toLowerCase() != 'absolute'){
+      pal.css('position','relative');
+      }
+      var borderSize = parseInt(pal.css('padding'))+1;
+      var m = pal.children('div.panel-mask');
+      if (!m.length){
+      m = $('<div class="panel-mask"></div>').appendTo(pal);
+      }
+      m.css({
+      background:'#fff',
+      left:borderSize,
+      top:(borderSize+pal.children('.panel-header')._outerHeight()),
+      right:borderSize,
+      bottom:borderSize
+      });
+      m.children('div.panel-mask-msg').remove();
+      var mm = $('<div class="panel-mask-msg"></div>').appendTo(m);
+      mm.html(msg).css({position:'absolute'}).css({
+      position:'absolute',
+      top: '50%',
+      left: '50%',
+      marginTop: -mm._outerHeight()/2,
+      marginLeft: -mm._outerWidth()/2
+      })
+      });
+      },
+      hideMask: function(jq){
+      return jq.each(function(){
+      $(this).panel('panel').children('div.panel-mask').remove();
+      })
+      }
+});
+  function cssRisize(){
+    $("div[id*='container']").each(function(e){
+          $(this).css('height',parseInt($('#south').css('height').replace('px',''))-35);
+          $(this).scrollTop($(this)[0].scrollHeight+32);
+          $(this).find("div[id*='input-line']").each(function(e){
+            $(this).find('.cmdline').focusEnd();
+          });
+        })
+  }
+  function resize(){
+    $('#centerCC').layout('panel', 'south').panel({
+      onResize: function (width, height) {
+        cssRisize();
+        }
+      })
+  }
+  function initUIComps(){
+    initDD();
+    initCCInput();
+    initCC();
+  }
+  var contentJson =[];
+  function initRedisConnect(profile,db){
+    $("#databaseSelect").combobox("setValue",profile+":db"+db);
+    if(profile+":db"+db==currentDb){
+      return;
+    }
+    var con = findProfileConfig(profile).connection;
+    if(con!=null && Array.isArray(con)){
+      const cluserOption={
+        clusterRetryStrategy:function(times) {
+            var delay = Math.min(times * 50, 2000);
+            return delay;
+          }  
+    };
+      const cluster=new Redis.Cluster(con,cluserOption);
+      var instance = {};
+      instance.redis = cluster;
+      instance.isCluster = true;
+      redisCommand.RedisCommand().init(profile,instance);
+    }else{
+    con.db=db;
+    const redis = new Redis(con);
+    var instance = {};
+    instance.redis = redis;
+    instance.isCluster = false;
+    redisCommand.RedisCommand().init(profile,instance);
+    }
+   
+    currentDb = profile+":db"+db;
+  }
+  function initTreeData(profile,isCluster){
+    var treeData = {};
+    treeData.id = profile;
+    treeData.text = profile;
+    treeData.type = "con";
+    command.parseCmd(profile,'config',['get','databases']).then(function (data){
+      console.log(data);
+       var dbCount = parseInt(data.res[1]);
+       var children=[];
+       contentJson=[];
+       if(isCluster){
+         dbCount=1;
+       }
+      for(var i=0;i<dbCount;i++){
+        var child = {};
+        child.id=i;
+        child.text = "db"+i;
+        child.type = "db";
+        children.push(child);
+       }
+       treeData.children=children;
+       contentJson.push(treeData);
+       initTreeDatabases(profile);
+      });
+
+
+     
+    
+    
+  }
+  function initTreeDatabases(profile){
+    $('#tt').tree({
+    data:contentJson,
+    animate:true,
+    onBeforeLoad:function(node,param){
+      
+    },
+    formatter:function(node){
+                  var s = node.text;
+                  if(node.type=="db"){
+                   // console.log(node);
+                  }else if (node.children){
+                    s += ' <span style=\'color:blue\'>(' + node.children.length + ')</span>';
+                  }
+                  return s;
+    },
+    onLoadSuccess:function(node,data){
+      isShowTree=true;
+      $.messager.progress('close');
+    },
+    onLoadError:function(arg){
+      $.messager.progress('close');
+    },
+    onClick:function(node){
+      if(node.type=="db"){
+        initRedisConnect(profile,node.id);
+        }
+    },
+    onDblClick:function(node){
+      
+      if(node.type=="db"){
+        initRedisConnect(profile,node.id);
+        loadDbData(profile,"*",node);
+      }else if(node.type=="group"){
+          loadDbData(profile,node.text+"*",node);
+        }
+      
+    }        
+   });
+  }
+  function loadDbData(profile,pattern,selected){
+    $.messager.progress({
+         title: '提示',
+         msg: '数据请求中，请稍候……',
+         text: ''
+      });
+    var arg=[];
+    arg.push(pattern);
+    arg.push(command.defautKeysSize);
+    command.parseCmd(profile,'keys',arg).then(function (data){
+      var arr = data.res;
+      var dbNode = selected;
+      if(selected.type=="db"){
+        var selectedChildren = $('#tt').tree('getChildren',selected.target);
+        for(var i=0;i<selectedChildren.length;i++){
+        $('#tt').tree('remove', selectedChildren[i].target);
+        }
+        $('#tt').tree('append', {
+	      parent: selected.target,
+	      data: buildNodeChildren(arr,true)
+       });
+      $('#tt').tree('select',selected.target);
+      }else if(selected.type=="group"){
+        dbNode =  $('#tt').tree('getParent',selected.target);
+        $('#tt').tree('insert', {
+        before: selected.target,
+        data: buildNodeChildren(arr,false)
+      }); 
+      $('#tt').tree('remove', selected.target);
+      }
+      command.parseCmd(profile,'dbsize',arg).then(function(data){
+        if (dbNode){
+          var length = arr.length;
+          if(length>=defautKeysSize){
+            length = defautKeysSize;
+          }
+        	$('#tt').tree('update', {
+	      	target: dbNode.target,
+		      text: dbNode.text.replace(/<span.*?span>/,"")+' <span style=\'color:blue\'>(' + length+'/'+data.res + ')</span>'
+	});
+}
+
+      });
+      
+      $.messager.progress('close');
+  });
+}
+  function buildNodeChildren(arr,isClose){
+    var children=[]
+    var map = new Map();
+      for(var i=0;i<arr.length;i++){
+        var key = {};
+        if(arr[i].indexOf(":")==-1){
+          key.id = arr[i];
+          key.text = arr[i];
+          key.type = "key";
+          children.push(key);
+        }else{
+          var group = arr[i].substr(0,arr[i].lastIndexOf(":"));
+          if(map.get(group)!=null){
+            key = children[map.get(group)];
+            var subKey={};
+            subKey.id = arr[i];
+            subKey.text = arr[i];
+            subKey.type = "key";
+            if(key.children.length<=defautKeysSize){
+              key.children.push(subKey);
+            }
+          }else{
+            
+            key.id = group+i;
+            key.text = group;
+            key.type = "group";
+            if(isClose){
+              key.state = "closed";
+            }else{
+              key.state = "open";
+            }
+           
+            var subChildren = [];
+            var subKey={};
+            subKey.id = arr[i];
+            subKey.text = arr[i];
+            subKey.type = "key";
+            subChildren.push(subKey);
+            key.children=subChildren;
+            children.push(key);
+            map.set(group,children.length-1);
+          }
+        }
+          
+       
+        
+      }
+      return children;
+  }
+  function initTree(profile){
+    $.messager.progress({
+      title: '提示',
+      msg: '数据请求中，请稍候……',
+      text: ''
+      });
+      if(isShowTree){
+        var root = $('#tt').tree('getRoot');
+       $('#tt').tree("remove",root.target);
+       isShowTree=false;
+    }
+    
+    var con = findProfileConfig(profile).connection;
+    if(!Array.isArray(con)){
+      testTreeSingle(profile,con.host+":"+con.port,con.password);
+    }else{
+      testTreeCluster(con,profile);
+    }
+
+
+    
+  }
+  function initCCInput(){
+    $('.layout-split-west .panel-title').css("height","25px");
+    $('.layout-split-west .panel-title').prepend('<input id="databaseSelect"  style="width:190px;height:25px"></input>');
+  }
+  function initDD(){
+    $('#easyui-panel-connection').panel({
+    height:150,
+    title:'  ',
+    tools:[{
+            iconCls:'icon-add',
+            handler:function(){
+              ddHandler(false,'no');
+            }
+					}]
+    });
+  }
+  function ddHandler(isEdit,profile){
+    $('#dd').dialog({
+                bgiframe: true,
+                title: 'connect',
+                width: 400,
+                height: 250,
+                closed: false,
+                cache: false,
+                modal: true,
+                href:"edit.html",               
+                onLoad:function(){
+                  if(isEdit){
+                    var conConfig = findProfileConfig(profile).connection;
+                    if(!Array.isArray(conConfig)){
+                      $('#alias').textbox('setValue',profile);
+                      $('#aliasHidden').val(profile);
+                      $('#hosts').textbox('setValue',conConfig.host+":"+conConfig.port);
+                      $('#password').textbox('setValue',conConfig.password);
+                    }else{
+                      $('#alias').textbox('setValue',profile);
+                      $('#aliasHidden').val(profile);
+                      var hosts="";
+                      for(var i=0;i<conConfig.length;i++){
+                        hosts = hosts+conConfig[i].host+":"+conConfig[i].port+","
+                      }
+                      hosts = hosts.substr(0,hosts.length-1);
+                      $('#hosts').textbox('setValue',hosts);
+                      
+                      $('#password').textbox('setValue',conConfig[0].password);
+                    }
+       
+                  }  
+                },
+
+                buttons: [{
+                      text:'Test',
+                      handler:function(){
+                        test();
+                      }
+                    },{
+                      text:'Save',
+                      iconCls:'icon-save',
+                      handler:function(){
+                        if(isEdit){
+                          save(true);
+                        }else{
+                          save(false);
+                        }
+                        
+                      }
+                    }]
+            });
+          
+  }
+  function initCC(){
+   
+    var config = store.Store().get("config");
+    if(config!=null && config.length>0&&content.length==0){
+      for(var i=0;i<config.length;i++){
+          var con = {};
+          con.profile = config[i].profile;
+          content.push(con);
+        }
+    }
+        
+    $("#databaseSelect").combobox({
+        valueField: 'profile',
+        textField: 'profile',
+        editable:false,
+        data: content.sort(function (x, y) {
+            if (x.profile < y.profile) {
+                return -1;
+            }
+            if (x.profile > y.profile) {
+                return 1;
+            }
+            return 0;
+            }),
+        panelHeight: '180px',
+        formatter: formatItem,
+        onSelect:function(row){
+          initTree(row.profile);
+        }
+    });
+    setCCDefautValue();
+    $('.combobox-item a').each(function(row){
+      var id =this.id;
+      if(id.indexOf('edit')==-1){
+        $('#'+this.id).linkbutton({
+          iconCls: 'icon-remove',
+          iconAlign: 'right'
+        });
+        $('#'+this.id).bind('click', function(e){
+          e.stopPropagation()
+          var remove = this;
+          var ccValue = $("#databaseSelect").combobox('getValue');
+          
+          $.messager.confirm('message', 'Do you sure to delete '+this.id+'?', function(r){
+            if (r){
+              $(remove).parent().parent().remove();
+              if(ccValue == remove.id){
+                setCCDefautValue();
+              }
+              removeProfile(remove.id);
+            }
+          }); 
+       });
+      }else{
+        $('#'+this.id).linkbutton({
+          iconCls: 'icon-edit',
+          iconAlign: 'right'
+          });
+        $('#'+this.id).bind('click', function(e){
+          e.stopPropagation()
+          ddHandler(true,this.id.replace("edit",""));
+        });
+      }
+    })
+    $('.l-btn').css('border','0px');
+    $('.combobox-item').css('position','relative');
+   
+    
+  }
+  function findProfileConfig(profile){
+    var config = store.Store().get("config");
+    for(var i=0;i<config.length;i++){
+      var p = config[i];
+      if(p.profile == profile){
+       return p;
+      }
+    }
+  }
+  function removeProfile(profile){
+    var config = store.Store().get("config");
+    var newConfig = [];
+    for(var i=0;i<config.length;i++){
+      var p = config[i];
+      if(p.profile != profile){
+        newConfig.push(p);
+      }
+    }
+    store.Store().set("config",newConfig);
+
+    var newContent = [];
+    for(var j=0;j<content.length;j++){
+      if(content[j].profile!=profile){
+        newContent.push(content[j]);
+      }
+    }
+    content = newContent;
+  }
+  function setCCDefautValue(){
+    if(content.length>0){
+      $("#databaseSelect").combobox('setValue','select a connection');
+    }else{
+      $("#databaseSelect").combobox('setValue','config connection first!');
+    }
+  }
+  function checkParams(){
+    var alias = $('#alias').textbox('getValue').trim();
+    var aliasHidden = $('#aliasHidden').val().trim();
+    if(alias==''){
+      $.messager.alert('info','alias should not be empty!');
+      return false;
+    }else if(aliasHidden ==''){
+      for(var i=0;i<content.length;i++){
+        if(content[i].profile==alias){
+          $.messager.alert('info',alias+' is existed');
+          return false;
+        }
+      }
+    }
+    var hosts = $('#hosts').textbox('getValue').trim();
+    if(hosts==''){
+      $.messager.alert('info','hosts should not be empty!');
+      return false;
+    } else{
+      var hostPorts = hosts.split(',');
+      for(var i=0;i<hostPorts.length;i++){
+        if(hostPorts[i].indexOf(':')==-1||hostPorts[i].split(":")[1].match(/^\d+$/)==null){
+          $.messager.alert('info','hosts is illegal! ex:host:port,host2:port2 and so on');
+          return false;
+        }
+      }
+    }
+  return true;  
+  }
+  function test(){
+    var isPass = checkParams();
+    if(!isPass){
+      return;
+    }
+    $('#dd').dialog('showMask', 'Checking...');
+    var alias = $('#alias').textbox('getValue').trim();
+    var hosts = $('#hosts').textbox('getValue').trim();
+    var password = $('#password').textbox('getValue').trim();
+  if(hosts.split(',').length==1){
+    testSingle(hosts,password);
+  }else{
+    testCluster(hosts.split(','),password);
+  }
+}   
+  function testCluster(hosts,password){
+    const cluserOption={
+        clusterRetryStrategy:function(times) {
+            return "no";
+          }  
+    };
+    var connection = [];
+    for(var i=0;i<hosts.length;i++){
+      var con = {};
+      con.password = password;
+      con.host = hosts[i].split(':')[0];
+      con.port = hosts[i].split(':')[1];
+      connection.push(con);
+    }
+    const cluster=new Redis.Cluster(connection,cluserOption);
+    cluster.get("custom:key:test", function (err, res) {
+     if(err ==null){
+      cluster.disconnect();
+      $.messager.alert('info','successfully!');
+     }else{
+      $.messager.alert('error','failed!','error');
+     }
+     $('#dd').dialog('hideMask');
+  });
+  }
+  function testSingle(hosts,password){
+    var con = {
+        port: hosts.split(":")[1], // Redis port
+        host: hosts.split(":")[0], // Redis host
+        password: password,
+        db: 0,
+        retryStrategy: function(times) {
+        return 'no';
+        }
+      }   
+    var redis = new Redis(con);
+    redis.get("custom:key:test", function (err, res) {
+     if(err ==null){
+      redis.disconnect();
+      $.messager.alert('info','successfully!');
+     }else{
+      $.messager.alert('error','failed!','error');
+     }
+     $('#dd').dialog('hideMask');
+  });
+  }   
+  function testTreeSingle(profile,hosts,password){
+    var con = {
+        port: hosts.split(":")[1], // Redis port
+        host: hosts.split(":")[0], // Redis host
+        password: password,
+        db: 0,
+        retryStrategy: function(times) {
+        return 'no';
+        }
+      }   
+    var redis = new Redis(con);
+    redis.get("custom:key:test", function (err, res) {
+     if(err ==null){
+      redis.disconnect();
+      initRedisConnect(profile,0)
+      initTreeData(profile,false);
+     }else{
+      $.messager.alert('error','connect failed!','error');
+      $.messager.progress('close');
+     }
+  });
+  } 
+  function testTreeCluster(con,profile){
+    const cluserOption={
+        clusterRetryStrategy:function(times) {
+            return "no";
+          }  
+    };
+    
+    const cluster=new Redis.Cluster(con,cluserOption);
+    cluster.get("custom:key:test", function (err, res) {
+     if(err ==null){
+      cluster.disconnect();
+      initRedisConnect(profile,0)
+      initTreeData(profile,true);
+     }else{
+      $.messager.alert('error','connect failed!','error');
+      $.messager.progress('close');
+     }
+  });
+  }
+  function save(isEdit){
+    var isPass = checkParams();
+    if(!isPass){
+      return;
+    }
+    var alias = $('#alias').textbox('getValue').trim();
+    var aliasHidden = $('#aliasHidden').val().trim();
+    var hosts = $('#hosts').textbox('getValue').trim();
+    var password = $('#password').textbox('getValue').trim();
+    var config = store.Store().get("config");
+    if(config == null){
+      config = [];
+    }
+    if(isEdit){
+      removeProfile(aliasHidden);
+      config = store.Store().get("config");
+    }
+  if(hosts.split(',').length==1){
+    saveSingle(alias,hosts,password,config);
+   }else{
+    saveCluster(alias,hosts.split(','),password,config);
+   }
+   $('#dd').dialog('close');
+    content=[];
+    initCC();
+  }
+  function saveSingle(alias,hosts,password,config){
+    var con=  {"profile":alias,"connection":{
+    port: hosts.split(':')[1], // Redis port
+    host: hosts.split(':')[0], // Redis host
+    password: password,
+    db: 0,
+    retryStrategy: function(times) {
+      var delay = Math.min(times * 50, 2000);
+      return delay;
+      }
+     }
+    }
+    config.push(con);
+    //console.log(config);
+    //store.Store().del("config");
+    store.Store().set("config",config);
+  }
+  function saveCluster(alias,hosts,password,config){
+    var connection = [];
+    for(var i=0;i<hosts.length;i++){
+      var con = {};
+      con.password = password;
+      con.host = hosts[i].split(':')[0];
+      con.port = hosts[i].split(':')[1];
+      connection.push(con);
+    }
+  var cluster =  {"profile":alias,"connection":connection};
+  config.push(cluster);
+  store.Store().set("config",config);
+  }
+  function formatItem(row){
+			var s = '<span style="font-weight:bold">' + row.profile + '</span><div style="text-align: right;display:inline;float:right;"><a href="#" id='+row.profile+'edit></a><a href="#" id='+row.profile+'></a></div>'
+			return s;
+		}
+  function getRedisConfig(){
    var options=
   [{"profile":"dev","connection":{
   port: 16379, // Redis port
@@ -88,30 +812,29 @@
 
 return options;
 }
+  function doSearch(value){
+      
+      var db = $("#databaseSelect").combobox("getValue");
+      if(db==null||db==""||db.indexOf(":")==-1){
+        $.messager.alert('info','please select a connection');
+        return;
+      }
+      var nodeId = db.split(":")[1].replace("db","");
+      loadDbData(db.split(":")[0],value,$('#tt').tree('find', nodeId));
+		}
 </script>      
   </head>
   <body>
     <div id="cc" class="easyui-layout" style="width:100%;height:100%;">
-      <div data-options="region:'west',title:'connections',split:true,minWidth:250,maxWidth:300" style="width:250px;">
-        <div class="easyui-panel" style="padding:5px;overflow-y:auto;width: 100%;">
-          <ul class="easyui-tree" data-options="
-                url:'tree_data1.json',
-                method:'get',
-                animate:true,
-                formatter:function(node){
-                  var s = node.text;
-                  if (node.children){
-                    s += ' <span style=\'color:blue\'>(' + node.children.length + ')</span>';
-                  }
-                  return s;
-                }
-              ">
-          </ul>
+      <div id="easyui-panel-connection" data-options="region:'west',title:'connections',split:true,minWidth:250,maxWidth:400" style="width:250px;">
+        <input class="easyui-searchbox" data-options="prompt:'Please Input Key,ex:*key*',searcher:doSearch" style="width:100%"></input>
+        <div  class="easyui-panel" style="padding:5px;overflow-y:auto;width: 100%;">
+          <ul id="tt"></ul>
         </div>
       
       </div>
       <div data-options="region:'center',split:true,collapsible:true" >
-        <div class="easyui-layout" data-options="fit:true">
+        <div id="centerCC" class="easyui-layout" data-options="fit:true">
           <div data-options="region:'center',border:false">
             <div class="easyui-tabs" style="width:100%;height:auto">
               <div title="About" style="padding:10px" data-options="closable:true">
@@ -125,7 +848,7 @@ return options;
                   <li>easyui is very easy but powerful.</li>
                 </ul>
               </div>
-              <div title="My Documents" style="padding:10px">
+              <div title="My Documents" style="padding:10px" data-options="closable:true">
                 <ul class="easyui-tree" data-options="url:'tree_data1.json',method:'get',animate:true"></ul>
               </div>
               <div title="Help" data-options="iconCls:'icon-help',closable:true" style="padding:10px">
@@ -135,19 +858,17 @@ return options;
           </div>
 
 
-          <div id="south" data-options="region:'south',title:'Terminal',split:true" style="overflow-y: auto;height:20%;background-color: black;color: white;">
-            <div id="container">
-              <output></output>
-              <div id="input-line" class="input-line">
-                <div class="prompt"></div><div style="position: relative;"><input  class="cmdline" autofocus/><span class="placeholder"></span></div style="position: relative;" >
-              </div>
+          <div id="south" data-options="region:'south',border:false,maximizable:true,split:true,collapsible:true" style="background-color: black;color: white;width: 100%;height: 400px;">
+            <div id='tabs' class="easyui-tabs"  style="width: 100%;">
+                
+            </div>
           </div>
-        </div>
       </div>
   </div>
 
 
 
-    
+  <div id="dd">
+  </div>
   </body>
 </html>

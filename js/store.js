@@ -7,6 +7,9 @@ var Store = Store || function() {
     },
     set:function(k,v){
       store.set(k,v);
+    },
+    del:function(k,v){
+      store.delete(k);
     }
   }
 };
