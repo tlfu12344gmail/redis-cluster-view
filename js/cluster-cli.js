@@ -382,48 +382,48 @@ function consoleArr(newArr){
 function getProConfig(){
     var redis_members = [{
         port: 6379,
-        password: '310c8cabcdefghf2d8abcdefd44496ac80',
-        host: '10.16.34.254'
+        password: '',
+        host: ''
       }, {
         port: 6379,
-        password: '310c8cabcdefghf2d8abcdefd44496ac80',
-        host: '10.16.33.38'
+        password: '',
+        host: ''
       }, {
         port: 6379,
-        password: '310c8cabcdefghf2d8abcdefd44496ac80',
-        host: '10.16.33.105'
+        password: '',
+        host: ''
       }]
       return redis_members;
 }
 function getUatConfig(){
     var redis_members = [{
         port: 6380,
-        password: 'deepblue',
-        host: '10.1.1.65'
+        password: '',
+        host: ''
       }, {
         port: 6385,
-        password: 'deepblue',
-        host: '10.1.1.65'
+        password: '',
+        host: ''
       }, {
         port: 6381,
-        password: 'deepblue',
-        host: '10.1.1.65'
+        password: '',
+        host: ''
       }]
       return redis_members;
 }
 function getTestConfig(){
     var redis_members = [{
         port: 6379,
-        password: 'deepblue',
-        host: '10.1.1.95'
+        password: '',
+        host: ''
       }, {
         port: 6380,
-        password: 'deepblue',
-        host: '10.1.1.95'
+        password: '',
+        host: ''
       }, {
         port: 6381,
-        password: 'deepblue',
-        host: '10.1.1.95'
+        password: '',
+        host: ''
       }]
       return redis_members;
 }
