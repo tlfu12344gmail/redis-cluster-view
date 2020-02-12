@@ -120,11 +120,30 @@ p {
   margin-inline-end: 0px;
   color: white;
 }
-span{
+.tree-node span{
 	user-select:none;
 }
 .panel-body-cus {
   /* overflow: auto; */
   border-top-width: 0;
   padding: 0;
+}
+pre {    color: blue; padding: 0; margin: 0; }
+
+.string { color: green; }
+
+.number { color: darkorange; }
+
+.boolean { color: blue; }
+
+.null { color: magenta; }
+
+.key { color: red; }
+
+.vContent {
+  margin: 2px;
+  padding: 2px;
+}
+#vContent p {
+  color: red;
 }

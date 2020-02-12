@@ -230,7 +230,11 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
         var cmd = args[0].toLowerCase();
         args = args.splice(1); // Remove cmd from arg list.
         if(cmd.indexOf("keys")==0&&args.length==1){
-          args.push(command.defautKeysSize);
+          if(args[0].replace(/\*/g,"")==""){
+            args.push(command.defautKeysSize);
+          }else{
+            args.push(-1);
+          }
         }
       }else{
         showLine();
@@ -248,10 +252,15 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
         }
         var title = $('#input-line'+currentTab+' .prompt').html().replace("&gt;","");
         if(title.indexOf('use command') !=0){
-          currentProfile=title.split(':')[0];
+          if(cmd=="select"){
+            currentProfile=title.split(":")[0];
+          }else{
+            currentProfile=title;
+          }
+          
         }
         command.parseCmd(currentProfile,cmd,args).then(function (data){
-          dealWithRedisCallback(data);
+          dealWithRedisCallback(data,cmd);
           showLine();
         });
       }
@@ -274,9 +283,9 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
       output(html);    
     
   }
-  function dealWithRedisCallback(data){
+  function dealWithRedisCallback(data,cmd){
     if(data.err && data.err.message){
-      output(data.err);
+      output(data.err.message);
       return;
     }
     if(data.err){
@@ -296,7 +305,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
         useDb(data.res.split(':')[1]);
       }else if(data.res && Array.isArray(data.res)){
          var newArr = data.res;
-           if(newArr.length<=1000){
+           if(newArr.length<=100&&cmd!="keysv"){
              newArr = newArr.sort()
              var outputShow = ""
               for(var i=0;i<newArr.length;i++){
@@ -315,9 +324,11 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
           }
           $('#searching'+currentTab).remove();
           output("size:"+newArr.length);
-          output(JSON.stringify(newArr));
-      }
-      else{
+          output(syntaxHighlight(newArr));
+          //console.log(JSON.stringify(newArr,null,2));
+      }else if($.isPlainObject(data.res)){
+        output(syntaxHighlight(data.res));
+      }else{
         
         output(data.res);
       }
@@ -325,7 +336,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
     }
   }
   function useDb(db){
-    if(db>=0&&db<=15){
+    if(db>=0&&db<=50){
       useConnection(currentProfile,db);
     }else{
     output("illegal db!");
@@ -412,6 +423,8 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
           //setTabTitle(profile);
           $('#south .tabs-selected .tabs-title').html(profile);
           currentProfile = profile;
+          redisCommand.RedisCommand().resetSlotMap();
+
         }else{
          output(err);
         }
@@ -435,11 +448,11 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
       var instance = {};
       instance.redis = redis;
       instance.isCluster = false;
-      redisCommand.RedisCommand().init(profile,instance);
-      $('#searching'+currentTab).html(profile+" connect successfully!");
+      redisCommand.RedisCommand().init(profile+":"+db,instance);
+      $('#searching'+currentTab).html(profile+":"+db+" connect successfully!");
       $('#input-line'+currentTab+' .prompt').html(profile+':'+useCon.db+'>');
       $('#searching'+currentTab).removeAttr("id");
-      currentProfile = profile;
+      currentProfile = profile+":"+db;
       //setTabTitle(profile);
       $('#south .tabs-selected .tabs-title').html(profile);
      }else{
@@ -503,7 +516,29 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
         Math.max(d.body.clientHeight, d.documentElement.clientHeight)
     );
   }
+  function syntaxHighlight(json) {
+    if (typeof json != 'string') {
+        json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+    var str = json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(match) {
+        var cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+    return '<pre id="result">'+str+'</pre>';
 
+}
   //
   return {
     init: function() {
@@ -513,6 +548,9 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
     setCurrentTab:function(currentTab){
       currentTab=currentTab;
     },
+    syntaxHighlight:function(json){
+      return syntaxHighlight(json);
+    }
   }
 };
 module.exports={

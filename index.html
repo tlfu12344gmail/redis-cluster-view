@@ -29,10 +29,9 @@
       const command = redisCommand.RedisCommand();
       const  Redis = require('ioredis');
       var content = [];
-      var currentDb = -1;
       var isShowTree = false;   
       var currentTabIndex =0;
-      var defautKeysSize =1000;
+     
     //   setRedisConfig();
     // function setRedisConfig(){
     //   store.Store().set("config",getRedisConfig());
@@ -71,7 +70,7 @@
    $("#tabs .tabs-wrap .panel-tool-max").bind('click',function(e){
      if($(this).hasClass('panel-tool-restore')){
       $(this).removeClass('panel-tool-restore');
-      $('#centerCC').layout('panel', 'south').panel('resize',{height:360});
+      $('#centerCC').layout('panel', 'south').panel('resize',{height:160});
       $('#centerCC').layout('resize');
      }else{
       $(this).addClass('panel-tool-restore');
@@ -160,26 +159,54 @@
           $(this).find("div[id*='input-line']").each(function(e){
             $(this).find('.cmdline').focusEnd();
           });
-        })
+        });
+       // $("#sccCenter .textbox").css('height',parseInt($("#sccCenter").css('height').replace('px',''))-35);   
+       
   }
   function resize(){
     $('#centerCC').layout('panel', 'south').panel({
       onResize: function (width, height) {
         cssRisize();
         }
-      })
+      });
+     // $("#sccCenter .textbox").css('height',parseInt($("#sccCenter").css('height').replace('px',''))-35);   
   }
   function initUIComps(){
     initDD();
     initCCInput();
     initCC();
+    initContentView();
+  }
+  function initContentView(){
+          $("#sccCenter").bind("dblclick",function(e){
+                  var text=document.getElementById("vContent");
+                        if (document.body.createTextRange) {
+                                var range = document.body.createTextRange();
+                                range.moveToElementText(text);
+                                range.select();
+                            } else if (window.getSelection) {
+                                var selection = window.getSelection();
+                                var range = document.createRange();
+                                range.selectNodeContents(text);
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                              
+                            } 
+
+           });
   }
   var contentJson =[];
   function initRedisConnect(profile,db){
+    var value =$("#databaseSelect").combobox("getValue");
+   if(value == profile+":db"+db){
+     return;
+   }
+   $("#databaseSelect").combobox("setValue",profile+":"+db);
+   var profileMap = redisCommand.RedisCommand().getRedis();
+   if(profileMap&&profileMap.has(profile)||profileMap.has(profile+":"+db)){
+     return;
+   }
     $("#databaseSelect").combobox("setValue",profile+":db"+db);
-    if(profile+":db"+db==currentDb){
-      return;
-    }
     var con = findProfileConfig(profile).connection;
     if(con!=null && Array.isArray(con)){
       const cluserOption={
@@ -199,18 +226,19 @@
     var instance = {};
     instance.redis = redis;
     instance.isCluster = false;
-    redisCommand.RedisCommand().init(profile,instance);
-    }
-   
-    currentDb = profile+":db"+db;
+    redisCommand.RedisCommand().init(profile+":"+db,instance);
+    }   
   }
   function initTreeData(profile,isCluster){
     var treeData = {};
     treeData.id = profile;
     treeData.text = profile;
     treeData.type = "con";
-    command.parseCmd(profile,'config',['get','databases']).then(function (data){
-      console.log(data);
+    var tempProfile = profile;
+    if(!isCluster){
+      tempProfile = profile+":0";
+    }
+    command.parseCmd(tempProfile,'config',['get','databases']).then(function (data){
        var dbCount = parseInt(data.res[1]);
        var children=[];
        contentJson=[];
@@ -222,19 +250,15 @@
         child.id=i;
         child.text = "db"+i;
         child.type = "db";
+        child.db = i;
         children.push(child);
        }
        treeData.children=children;
        contentJson.push(treeData);
-       initTreeDatabases(profile);
+       initTreeDatabases(profile,isCluster);
       });
-
-
-     
-    
-    
   }
-  function initTreeDatabases(profile){
+  function initTreeDatabases(profile,isCluster){
     $('#tt').tree({
     data:contentJson,
     animate:true,
@@ -257,32 +281,201 @@
     onLoadError:function(arg){
       $.messager.progress('close');
     },
-    onClick:function(node){
-      if(node.type=="db"){
-        initRedisConnect(profile,node.id);
-        }
-    },
+    onContextMenu: function(e, node){
+	    	e.preventDefault();
+    // select the node
+    $('#tt').tree('select', node.target);
+    if(node.type=="group"){
+      $("#keysv").attr("value",isCluster+"="+profile);
+      $('#mm').menu('show', {
+			left: e.pageX,
+			top: e.pageY
+		});
+    }
+	},
     onDblClick:function(node){
-      
+      initRedisConnect(profile,node.db);
       if(node.type=="db"){
-        initRedisConnect(profile,node.id);
-        loadDbData(profile,"*",node);
+        loadDbData(isCluster,profile,"*",node);
       }else if(node.type=="group"){
-          loadDbData(profile,node.text+"*",node);
+          loadDbData(isCluster,profile,node.text+"*",node);
+        }else if(node.type=="key"){
+          loadKeyValue(isCluster,profile,node);
         }
       
     }        
    });
   }
-  function loadDbData(profile,pattern,selected){
+  function syntaxHighlight(json) {
+    if (typeof json != 'string') {
+        json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+    var str = json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(match) {
+        var cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+    return '<pre id="result">'+str+'</pre>';
+
+}
+  function loadKeyValue(isCluster,profile,node){
     $.messager.progress({
-         title: '提示',
-         msg: '数据请求中，请稍候……',
+         title: 'info',
+         msg: 'loading......',
+         text: ''
+      });
+      if(!isCluster) {
+        profile=profile+":"+node.db;
+      }
+      var arg=[];
+      var key = node.text;
+      arg.push(key);
+      command.parseCmd(profile,'type',arg).then(function (data){
+        if(data.res){
+          var type = data.res;
+          if(type=="string"){
+            getStringV(profile,key,type);
+          }else if(type=="set"){
+            getSetV(profile,key,type);
+          }else if(type=="zset"){
+            getZSetV(profile,key,type);
+          }else if(type=="list"){
+            getListV(profile,key,type);
+          }else if(type=="hash"){
+            getHastV(profile,key,type);
+          }else if(type=="none"){
+            $("#vContent").html("the key:'"+key+"' of type is null! can not find the value");
+            $.messager.progress('close');
+          }
+        }
+      });
+     
+  }
+  function keysv(o){
+    var node = dbNode =  $('#tt').tree('getSelected');
+    if(node&&o){
+      var v =  $(o).attr("value");
+      var isCluster = v.split("=")[0];
+      var profile = v.split("=")[1];
+      var arg=[];
+      arg.push(node.text+"*");
+      arg.push(-1);
+    if(!eval(isCluster)) {
+      profile=profile+":"+node.db;
+     }
+     $.messager.progress({
+         title: 'info',
+         msg: 'loading......',
+         text: ''
+      });
+    command.parseCmd(profile,'keysv',arg).then(function (data){
+      if(data.res){
+        $("#vContent").html("<p>size:"+data.res.length+"</<p>"+syntaxHighlight(data.res));
+        $.messager.progress('close');
+      }
+    });
+    }
+   
+    
+  }
+  function getHastV(profile,key,type){
+    var arg=[];
+    arg.push(key);
+    command.parseCmd(profile,'hgetall',arg).then(function (data){
+        if(data.res){
+          var dd={};
+          dd.key = key;
+          dd.type = type;
+          dd.value=data.res;
+          $("#vContent").html(syntaxHighlight(dd));
+        }
+        $.messager.progress('close');
+      })
+  }
+  function getListV(profile,key,type){
+    var arg=[];
+    arg.push(key);
+    arg.push(0);
+    arg.push(-1);
+    command.parseCmd(profile,'lrange',arg).then(function (data){
+        if(data.res){
+          var dd={};
+          dd.key = key;
+          dd.type = type;
+          dd.value=data.res;
+          $("#vContent").html(syntaxHighlight(dd));
+        }
+        $.messager.progress('close');
+      })
+  }
+  function getZSetV(profile,key,type){
+    var arg=[];
+    arg.push(key);
+    arg.push(0);
+    arg.push(-1);
+    arg.push("WITHSCORES");
+    command.parseCmd(profile,'zrange',arg).then(function (data){
+        if(data.res){
+          var dd={};
+          dd.key = key;
+          dd.type = type;
+          dd.value=data.res;
+          $("#vContent").html(syntaxHighlight(dd));
+        }
+        $.messager.progress('close');
+      })
+  }
+  function getSetV(profile,key,type){
+    var arg=[];
+    arg.push(key);
+    command.parseCmd(profile,'smembers',arg).then(function (data){
+        if(data.res){
+          var dd={};
+          dd.key = key;
+          dd.type = type;
+          dd.value=data.res;
+          $("#vContent").html(syntaxHighlight(dd));
+        }
+        $.messager.progress('close');
+      })
+  }
+  function getStringV(profile,key,type){
+    var arg=[];
+    arg.push(key);
+    command.parseCmd(profile,'get',arg).then(function (data){
+        if(data.res){
+          var dd={};
+          dd.key = key;
+          dd.type = type;
+          dd.value=data.res;
+          $("#vContent").html(syntaxHighlight(dd));
+        }
+        $.messager.progress('close');
+      })
+  }
+  function loadDbData(isCluster,profile,pattern,selected){
+    $.messager.progress({
+         title: 'info',
+         msg: 'loading......',
          text: ''
       });
     var arg=[];
     arg.push(pattern);
     arg.push(command.defautKeysSize);
+   if(!isCluster) {
+    profile=profile+":"+selected.db;
+   }
     command.parseCmd(profile,'keys',arg).then(function (data){
       var arr = data.res;
       var dbNode = selected;
@@ -293,23 +486,28 @@
         }
         $('#tt').tree('append', {
 	      parent: selected.target,
-	      data: buildNodeChildren(arr,true)
+	      data: buildNodeChildren(profile,arr,true)
        });
       $('#tt').tree('select',selected.target);
       }else if(selected.type=="group"){
         dbNode =  $('#tt').tree('getParent',selected.target);
+        var data = buildNodeChildren(profile,arr,false);
+        for(var i=0;i<data.length;i++){
+          var id = data[i].id;
+          var node = $('#tt').tree('find',id);
+          if(node&&id!=selected.id){
+            $('#tt').tree('remove',node.target);
+          }
+        }
         $('#tt').tree('insert', {
         before: selected.target,
-        data: buildNodeChildren(arr,false)
+        data: data
       }); 
       $('#tt').tree('remove', selected.target);
       }
       command.parseCmd(profile,'dbsize',arg).then(function(data){
         if (dbNode){
           var length = arr.length;
-          if(length>=defautKeysSize){
-            length = defautKeysSize;
-          }
         	$('#tt').tree('update', {
 	      	target: dbNode.target,
 		      text: dbNode.text.replace(/<span.*?span>/,"")+' <span style=\'color:blue\'>(' + length+'/'+data.res + ')</span>'
@@ -321,7 +519,11 @@
       $.messager.progress('close');
   });
 }
-  function buildNodeChildren(arr,isClose){
+  function buildNodeChildren(profile,arr,isClose){
+    var db=0;
+    if(profile.indexOf(":")!=-1){
+      db = Number(profile.split(":")[1]);
+    }
     var children=[]
     var map = new Map();
       for(var i=0;i<arr.length;i++){
@@ -330,6 +532,7 @@
           key.id = arr[i];
           key.text = arr[i];
           key.type = "key";
+          key.db = db;
           children.push(key);
         }else{
           var group = arr[i].substr(0,arr[i].lastIndexOf(":"));
@@ -339,24 +542,24 @@
             subKey.id = arr[i];
             subKey.text = arr[i];
             subKey.type = "key";
-            if(key.children.length<=defautKeysSize){
-              key.children.push(subKey);
-            }
+            subKey.db = db;
+            key.children.push(subKey);
           }else{
-            
-            key.id = group+i;
+            key.id = group;
             key.text = group;
             key.type = "group";
+            key.db = db;
             if(isClose){
               key.state = "closed";
             }else{
               key.state = "open";
             }
-           
+            key.db = db;
             var subChildren = [];
             var subKey={};
             subKey.id = arr[i];
             subKey.text = arr[i];
+            subKey.db = db;
             subKey.type = "key";
             subChildren.push(subKey);
             key.children=subChildren;
@@ -372,8 +575,8 @@
   }
   function initTree(profile){
     $.messager.progress({
-      title: '提示',
-      msg: '数据请求中，请稍候……',
+      title: 'info',
+      msg: 'loading......',
       text: ''
       });
       if(isShowTree){
@@ -387,10 +590,7 @@
       testTreeSingle(profile,con.host+":"+con.port,con.password);
     }else{
       testTreeCluster(con,profile);
-    }
-
-
-    
+    } 
   }
   function initCCInput(){
     $('.layout-split-west .panel-title').css("height","25px");
@@ -630,7 +830,7 @@
       cluster.disconnect();
       $.messager.alert('info','successfully!');
      }else{
-      $.messager.alert('error','failed!','error');
+      $.messager.alert('error',err,'error');
      }
      $('#dd').dialog('hideMask');
   });
@@ -651,7 +851,7 @@
       redis.disconnect();
       $.messager.alert('info','successfully!');
      }else{
-      $.messager.alert('error','failed!','error');
+      $.messager.alert('error',err,'error');
      }
      $('#dd').dialog('hideMask');
   });
@@ -673,7 +873,7 @@
       initRedisConnect(profile,0)
       initTreeData(profile,false);
      }else{
-      $.messager.alert('error','connect failed!','error');
+      $.messager.alert('error',err,'error');
       $.messager.progress('close');
      }
   });
@@ -692,7 +892,7 @@
       initRedisConnect(profile,0)
       initTreeData(profile,true);
      }else{
-      $.messager.alert('error','connect failed!','error');
+      $.messager.alert('error',err,'error');
       $.messager.progress('close');
      }
   });
@@ -835,9 +1035,12 @@ return options;
       </div>
       <div data-options="region:'center',split:true,collapsible:true" >
         <div id="centerCC" class="easyui-layout" data-options="fit:true">
-          <div data-options="region:'center',border:false">
-            <div class="easyui-tabs" style="width:100%;height:auto">
-              <div title="About" style="padding:10px" data-options="closable:true">
+          <div id="sccCenter" data-options="region:'center',border:false">
+            <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
+              <div id="vContent" class="vContent">
+               here will show the keys which you selected content 
+              </div>
+              <!-- <div title="About" style="padding:10px" data-options="closable:true">
                 <p style="font-size:14px">jQuery EasyUI framework helps you build your web pages easily.</p>
                 <ul>
                   <li>easyui is a collection of user-interface plugin based on jQuery.</li>
@@ -853,12 +1056,12 @@ return options;
               </div>
               <div title="Help" data-options="iconCls:'icon-help',closable:true" style="padding:10px">
                 This is the help content.
-              </div>
-            </div>
+              </div> 
+            </div>-->
           </div>
 
 
-          <div id="south" data-options="region:'south',border:false,maximizable:true,split:true,collapsible:true" style="background-color: black;color: white;width: 100%;height: 400px;">
+          <div id="south" data-options="region:'south',border:false,maximizable:true,split:true,collapsible:true" style="background-color: black;color: white;width: 100%;height: 200px;">
             <div id='tabs' class="easyui-tabs"  style="width: 100%;">
                 
             </div>
@@ -869,6 +1072,9 @@ return options;
 
 
   <div id="dd">
+  </div>
+  <div id="mm" class="easyui-menu" style="width:120px;">
+    <div id="keysv" value="" onclick="keysv(this);" data-options="iconCls:'icon-search'">keysv</div>
   </div>
   </body>
 </html>

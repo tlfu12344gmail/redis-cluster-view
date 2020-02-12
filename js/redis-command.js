@@ -7,27 +7,68 @@ util.toArray = function(list) {
 var map = new Map();
 var slotMap = new Map();
 var defautKeysSize=1000;
+var defaultGroupSize = defautKeysSize/50;
 const CMDS_DESC=[
   'show cons|dbs|commands',
   'use con',
   'select db',
   'config get databases',
+  'dbsize',
   'get key',
   'set key value [EX|PX seconds|milliseconds] [NX|XX]',
   'del key [key ...]',
   'ttl key',
   'expire key seconds',
   'exists key',
-  'keys pattern [count(可选)]',
-  'keysc pattern [count(可选)]',
-  'keysv pattern [count(可选)]',
+  'type key',
+  'keys pattern [count]',
+  'keysc pattern [count]',
+  'keysv pattern [count]',
+
   'sadd key member [member ...]',
   'scard key',
   'smembers key',
   'srem key member [member ...]',
   'sismember key member',
+  'sscan key cursor [MATCH pattern] [COUNT count]',
+
   'incr key',
   'decr key',
+
+  'zadd key [NX|XX] [CH] [INCR] score member [score member ...]',
+  'zcard key',
+  'zcount key min max',
+  'zrem key member [member ...]',
+  'zrange key start stop [WITHSCORES]',
+  'zrank key member',
+  'zscore key member',
+  'zscan key cursor [MATCH pattern] [COUNT count]',
+   
+  'lset key index value',
+  'lpush key value [value ...]',
+  'rpush key value [value ...]',
+  'lpushx key value',
+  'rpushx key value',
+  'llen key',
+  'lrange key start stop',
+  'lrem key count value',
+  'linsert key BEFORE|AFTER pivot value',
+  'lindex key index',
+
+  'hset key field value',
+  'hmset key field value [field value ...]',
+  'hsetnx key field value',
+  'hlen key',
+  'hdel key field [field ...]',
+  'hexists key field',
+  'hget key field',
+  'hmget key field [field ...]',
+  'hkeys key',
+  'hgetall key',
+  'hscan key cursor [MATCH pattern] [COUNT count]',
+  'hstrlen key field',
+  'hvals key',
+
   'clear'
 ];
 var RedisCommand = RedisCommand || function() {
@@ -38,12 +79,35 @@ var RedisCommand = RedisCommand || function() {
   const getNodeKeys = async(node, pattern,max) => {
     const result = [];
     let cursor = 0;
+    var map = new Map();
     while (true) {
-        var { matched, cursor: newCursor } = await scan(node,cursor, pattern,max);
-        if(matched.length>max){
-          matched = matched.slice(0,max);
+        var { matched, cursor: newCursor } = await scan(node,cursor, pattern,10000);
+        var nerrArr=[];
+        if(max!=-1){
+        for(var i=0;i<matched.length;i++){
+          if(matched[i].indexOf(":")==-1){
+            nerrArr.push(matched[i]);
+          }else{
+            var group = matched[i].substr(0,matched[i].lastIndexOf(":"));
+           if(map.get(group)!=null){
+             var count = map.get(group);
+             if(count<defaultGroupSize){
+              nerrArr.push(matched[i]);
+             }
+             map.set(group,++count);
+           }else{
+            nerrArr.push(matched[i]);
+            map.set(group,1);
+           }
+          }
         }
-        result.push(...matched);
+        if(nerrArr.length>max){
+          nerrArr = nerrArr.slice(0,max);
+        }
+       }else{
+        nerrArr=matched;
+       }
+        result.push(...nerrArr);
         cursor = newCursor;
         if(max!=-1&&result.length>=max){
           break;
@@ -52,6 +116,7 @@ var RedisCommand = RedisCommand || function() {
             break;
         }
     }
+    map = new Map();
    return Array.from(new Set(result));
 };
 function initClusterSlotMap(slots){
@@ -118,14 +183,20 @@ function getKeysNode(keys,profile){
   return map;
 }
 
-function getAllKeysV(typeMap,currentRedis,keys){
+function getAllKeysV(typeMap,currentRedis){
   var pa=[];
   for(var k of typeMap){
     if(k[0]=='string'){
-      pa.push(getStringV(currentRedis,k[1]));
+      pa.push(getStringV(currentRedis,k[1].sort()));
      }else if(k[0]=='set'){
-       pa.push(getSetV(currentRedis,k[1]));
-     }
+       pa.push(getSetV(currentRedis,k[1].sort()));
+     }else if(k[0]=='zset'){
+      pa.push(getZSetV(currentRedis,k[1].sort()));
+    }else if(k[0]=='list'){
+      pa.push(getListV(currentRedis,k[1].sort()));
+    }else if(k[0]=='hash'){
+      pa.push(getHashV(currentRedis,k[1].sort()));
+    }
   }
   return Promise.all(pa);
 }
@@ -140,6 +211,32 @@ function buildPipelineArr(keys,commands){
     }
   return arr;
 }
+function getZSetV(currentRedis,keys){
+  var arr =[];
+                   
+  for(var i=0;i<keys.length;i++){
+    var typeCommand=[];
+    typeCommand.push("zrange");
+    typeCommand.push(keys[i]);
+    typeCommand.push(0);
+    typeCommand.push(-1);
+    typeCommand.push("WITHSCORES");
+    arr.push(typeCommand);
+    }
+  return new Promise(function(resolve,reject){
+    currentRedis.pipeline(arr).exec().then(function(data){
+      var kvArr=[];
+      for(var i=0;i<data.length;i++){
+        var kv = {};
+        kv.key = keys[i];
+        kv.type = 'zset';
+        kv.value = data[i][1];
+        kvArr.push(kv);
+      }
+     return resolve(kvArr);
+    })
+    });
+}
 function getSetV(currentRedis,keys){
   var arr = buildPipelineArr(keys,'smembers');
   return new Promise(function(resolve,reject){
@@ -148,8 +245,49 @@ function getSetV(currentRedis,keys){
       for(var i=0;i<data.length;i++){
         var kv = {};
         kv.key = keys[i];
-        kv.value = data[i][1];
         kv.type = 'set';
+        kv.value = data[i][1];
+        kvArr.push(kv);
+      }
+     return resolve(kvArr);
+    })
+    });
+}
+function getListV(currentRedis,keys){
+  var arr =[];
+                   
+  for(var i=0;i<keys.length;i++){
+    var typeCommand=[];
+    typeCommand.push("lrange");
+    typeCommand.push(keys[i]);
+    typeCommand.push(0);
+    typeCommand.push(-1);
+    arr.push(typeCommand);
+    }
+  return new Promise(function(resolve,reject){
+    currentRedis.pipeline(arr).exec().then(function(data){
+      var kvArr=[];
+      for(var i=0;i<data.length;i++){
+        var kv = {};
+        kv.key = keys[i];
+        kv.type = 'list';
+        kv.value = data[i][1];
+        kvArr.push(kv);
+      }
+     return resolve(kvArr);
+    })
+    });
+}
+function getHashV(currentRedis,keys){
+  var arr = buildPipelineArr(keys,"hgetall");                 
+  return new Promise(function(resolve,reject){
+    currentRedis.pipeline(arr).exec().then(function(data){
+      var kvArr=[];
+      for(var i=0;i<data.length;i++){
+        var kv = {};
+        kv.key = keys[i];
+        kv.type = 'hash';
+        kv.value = data[i][1];
         kvArr.push(kv);
       }
      return resolve(kvArr);
@@ -164,8 +302,8 @@ function getStringV(currentRedis,keys){
       for(var i=0;i<data.length;i++){
         var kv = {};
         kv.key = keys[i];
-        kv.value = data[i][1];
         kv.type = 'string';
+        kv.value = data[i][1];
         kvArr.push(kv);
       }
      return resolve(kvArr);
@@ -261,13 +399,18 @@ const command =function(profile,cmd,args){
                       }
                   } 
               }
+              var keyArr=Array.from(keyset);
+              //args[1]为查询的条数，集群下不做控制，每个节点下查这个数，返回的数据为args[1]*masters节点个数
+              // if(keyArr.length>args[1]){
+              //   keyArr = keyArr.slice(0,args[1]);
+              // }
               if(cmd=='keysc'){
-                resolve({err:false,res:keyset.size}); 
+                resolve({err:false,res:keyArr.length}); 
               }else if(cmd =='keys'){
-                resolve({err:false,res:Array.from(keyset)}); 
+                resolve({err:false,res:keyArr}); 
               }else if(cmd = 'keysv'){
-                if(keyset.size>0&& keyset.size<=defautKeysSize){
-                  getKeysV(currentRedis,true,Array.from(keyset),profile).then(function(data){  
+                if(keyArr.length>0&& keyArr.length<=defautKeysSize){
+                  getKeysV(currentRedis,true,keyArr,profile).then(function(data){  
                     var kvs = [];
                     for(var i=0;i<data.length;i++){
                       var kv =data[i];
@@ -277,19 +420,25 @@ const command =function(profile,cmd,args){
                       
                     }
                     resolve({err:false,res:kvs});
-                  });
+                  },function(e){
+                    return resolve({err:e,res:null});
+                   
+                });
                 }else{
-                  resolve({err:false,res:Array.from(keyset)}); 
+                  resolve({err:false,res:keyArr}); 
                 }
               }
              
-          }); 
+          },function(e){
+            return resolve({err:e,res:null});
+           
+        }); 
         }else{
            getNodeKeys(currentRedis,args[0],args[1]).then(function(data){
             if(cmd=='keysc'){
               resolve({err:false,res:data.length}); 
             }else if(cmd =='keys'){
-              resolve({err:false,res:Array.from(data)});
+              resolve({err:false,res:Array.from(data).sort()});
             }else if(cmd = 'keysv'){
               if(data.length>0&& data.length<=defautKeysSize){
                 getKeysV(currentRedis,false,data,profile).then(function(d){  
@@ -308,19 +457,21 @@ const command =function(profile,cmd,args){
               }
             }
             
-           });
+           },function(e){
+            return resolve({err:e,res:null});
+           
+        });
           
         }
        break;   
       case 'clear':
-        return resolve({err:null,res:"clear"});
+        return resolve({err:null,res:"clear"});  
       case 'use':
       case 'select':
         if(args.length!=1){
           return resolve(getWrongNumberArg(cmd));
         }
         return resolve({'err':false,'res':cmd+':'+args[0]});
-
       case 'show':  
         if(args.length!=1){
           return resolve(getWrongNumberArg(cmd));
@@ -357,6 +508,14 @@ const command =function(profile,cmd,args){
               return resolve({err,res});
           });
         break;
+      case 'type':
+          if(args.length>1){
+            return resolve(getWrongNumberArg(cmd));
+          } 
+          currentRedis.type(args[0], function (err, res) {
+              return resolve({err,res});
+          });
+        break;
       case 'exists':
           if(args.length>1){
             return resolve(getWrongNumberArg(cmd));
@@ -390,7 +549,10 @@ const command =function(profile,cmd,args){
       case 'config':
         currentRedis.config(args[0],args[1]).then(function(data){
           return resolve({err:null,res:data});
-        });
+        },function(e){
+          return resolve({err:e,res:null});
+         
+      });
           break;
       case 'dbsize':
         if(instance.isCluster){
@@ -401,7 +563,10 @@ const command =function(profile,cmd,args){
             })
           ).then(function(data) {
             return resolve({err:null,res:eval(data.join("+"))});  
-          });
+          },function(e){
+            return resolve({err:e,res:null});
+           
+        });
         }else{
           currentRedis.dbsize(function (err, res) {
             return resolve({err:err,res:res});
@@ -415,7 +580,10 @@ const command =function(profile,cmd,args){
         var mems = args.slice(1);
         currentRedis.sadd(args[0],mems).then(function(data){
           return resolve({err:false,res:data});
-      });
+      },function(e){
+        return resolve({err:e,res:null});
+       
+    });
         break;
       case 'srem':
         if(args.length<2){
@@ -424,7 +592,10 @@ const command =function(profile,cmd,args){
         var mems = args.slice(1);
         currentRedis.srem(args[0],mems).then(function(data){
           return resolve({err:false,res:data});
-      });
+      },function(e){
+        return resolve({err:e,res:null});
+       
+    });
         break;
       case 'scard':
           if(args.length!=1){
@@ -432,7 +603,10 @@ const command =function(profile,cmd,args){
           }
           currentRedis.scard(args[0]).then(function(data){
             return resolve({err:false,res:data});
-        });
+        },function(e){
+          return resolve({err:e,res:null});
+         
+      });
           break;
       case 'smembers':
             if(args.length!=1){
@@ -440,7 +614,10 @@ const command =function(profile,cmd,args){
             }
             currentRedis.smembers(args[0]).then(function(data){
               return resolve({err:false,res:data});
-          });
+          },function(e){
+            return resolve({err:e,res:null});
+           
+        });
             break; 
       case 'sismember':
               if(args.length!=2){
@@ -448,15 +625,34 @@ const command =function(profile,cmd,args){
               }
               currentRedis.sismember(args[0],args[1]).then(function(data){
                 return resolve({err:false,res:data});
-            });
-              break;       
+            },function(e){
+              return resolve({err:e,res:null});
+             
+          });
+              break; 
+      case 'sscan':
+                       if(args.length<3){
+                              return resolve(getWrongNumberArg(cmd));
+                            }
+                           var values = args.slice(2);
+                            currentRedis.sscan(args[0],args[1],values).then(function(data){
+                                return resolve({err:false,res:data});
+                            },function(e){
+                              return resolve({err:e,res:null});
+                             
+                          });
+                           
+                            break;         
       case 'incr':
               if(args.length!=1){
                 return resolve(getWrongNumberArg(cmd));
               }
               currentRedis.incr(args[0]).then(function(data){
                 return resolve({err:false,res:data});
-            });
+            },function(e){
+              return resolve({err:e,res:null});
+             
+          });
               break; 
       case 'decr':
                 if(args.length!=1){
@@ -464,8 +660,389 @@ const command =function(profile,cmd,args){
                 }
                 currentRedis.decr(args[0]).then(function(data){
                   return resolve({err:false,res:data});
+              },function(e){
+                return resolve({err:e,res:null});
+               
+            });
+                break;       
+                
+                
+      case 'zadd':
+                  if(args.length<3){
+                    return resolve(getWrongNumberArg(cmd));
+                  }
+                  var values = args.slice(1);
+                  currentRedis.zadd(args[0],values).then(function(data){
+                    return resolve({err:false,res:data});
+                },function(e){
+                  return resolve({err:e,res:null});
+                 
               });
-                break;                
+                  break; 
+      case 'zcard':
+                    if(args.length!=1){
+                      return resolve(getWrongNumberArg(cmd));
+                    }
+                    currentRedis.zcard(args[0]).then(function(data){
+                      return resolve({err:false,res:data});
+                  },function(e){
+                    return resolve({err:e,res:null});
+                   
+                });
+                    break;
+      case 'zcount':
+                    if(args.length!=3){
+                      return resolve(getWrongNumberArg(cmd));
+                    }
+                    currentRedis.zcount(args[0],args[1],args[2]).then(function(data){
+                      return resolve({err:false,res:data});
+                  },function(e){
+                    return resolve({err:e,res:null});
+                   
+                });
+                    break; 
+      case 'zrem':
+                    if(args.length<2){
+                      return resolve(getWrongNumberArg(cmd));
+                    }
+                    var values = args.slice(1);
+                    currentRedis.zrem(args[0],values).then(function(data){
+                      return resolve({err:false,res:data});
+                  },function(e){
+                    return resolve({err:e,res:null});
+                   
+                });
+                    break;  
+
+      case 'zrange':
+                      if(args.length!=3&&args.length!=4){
+                        return resolve(getWrongNumberArg(cmd));
+                      }
+                      if(args.length==3){
+                        currentRedis.zrange(args[0],args[1],args[2]).then(function(data){
+                          return resolve({err:false,res:data});
+                      },function(e){
+                        return resolve({err:e,res:null});
+                       
+                    });
+                      }else{
+                        currentRedis.zrange(args[0],args[1],args[2],args[3]).then(function(data){
+                          return resolve({err:false,res:data});
+                      }),function(e){
+                        return resolve({err:e,res:null});
+                       
+                    };
+                      }
+                      
+                      break;  
+      case 'zrank':
+                        if(args.length!=2){
+                          return resolve(getWrongNumberArg(cmd));
+                        }
+                       
+                        currentRedis.zrank(args[0],args[1]).then(function(data){
+                            return resolve({err:false,res:data});
+                        },function(e){
+                          return resolve({err:e,res:null});
+                         
+                      });
+                       
+                        break;
+      case 'zscore':
+                          if(args.length!=2){
+                            return resolve(getWrongNumberArg(cmd));
+                          }
+                         
+                          currentRedis.zscore(args[0],args[1]).then(function(data){
+                              return resolve({err:false,res:data});
+                          },function(e){
+                            return resolve({err:e,res:null});
+                           
+                        });
+                         
+                          break;  
+        case 'zscan':
+                            if(args.length<3){
+                              return resolve(getWrongNumberArg(cmd));
+                            }
+                           var values = args.slice(2);
+                          
+                           
+                           currentRedis.zscan(args[0],args[1],values).then(function(data){
+                                return resolve({err:false,res:data});
+                            },function(e){
+                              return resolve({err:e,res:null});
+                             
+                          });
+                           
+                            break;  
+         case 'lset':
+                              if(args.length!=3){
+                                return resolve(getWrongNumberArg(cmd));
+                              }
+                             currentRedis.lset(args[0],args[1],args[2]).then(function(data){
+                                  return resolve({err:false,res:data});
+                              },function(e){
+                                return resolve({err:e,res:null});
+                               
+                            });
+                             
+                              break;  
+          case 'rpush':                        
+          case 'lpush':
+          case 'rpushx':                        
+          case 'lpushx':
+                                if(args.length<2){
+                                  return resolve(getWrongNumberArg(cmd));
+                                }
+                               var values = args.slice(1);
+                              
+                               if(cmd=="rpush"){
+                                currentRedis.rpush(args[0],values).then(function(data){
+                                  return resolve({err:false,res:data});
+                                   },function(e){
+                                     return resolve({err:e,res:null});
+                               
+                                 });
+                               }else if(cmd=="lpush"){
+                                currentRedis.lpush(args[0],values).then(function(data){
+                                  return resolve({err:false,res:data});
+                                  },function(e){
+                                return resolve({err:e,res:null});
+                               
+                                });
+                              }else if(cmd=='rpushx'){
+                                currentRedis.rpushx(args[0],args[1]).then(function(data){
+                                  return resolve({err:false,res:data});
+                                  },function(e){
+                                return resolve({err:e,res:null});
+                               
+                                });
+                              }else if(cmd=='lpushx'){
+                                currentRedis.lpushx(args[0],args[1]).then(function(data){
+                                  return resolve({err:false,res:data});
+                                  },function(e){
+                                return resolve({err:e,res:null});
+                               
+                                });
+                              }
+                               
+                               
+                                break;                    
+                            
+                      case 'llen':
+                                  if(args.length!=1){
+                                    return resolve(getWrongNumberArg(cmd));
+                                  }
+                                  currentRedis.llen(args[0]).then(function(data){
+                                    return resolve({err:false,res:data});
+                                },function(e){
+                                  return resolve({err:e,res:null});
+                                 
+                              });
+                                  break; 
+                      case 'lrange':
+                                    if(args.length!=3){
+                                      return resolve(getWrongNumberArg(cmd));
+                                    }
+                                      currentRedis.lrange(args[0],args[1],args[2]).then(function(data){
+                                        return resolve({err:false,res:data});
+                                    },function(e){
+                                      return resolve({err:e,res:null});
+                                     
+                                  });
+                                    break;  
+                      case 'lrem':
+                                  if(args.length!=3){
+                                    return resolve(getWrongNumberArg(cmd));
+                                  }
+                                  currentRedis.lrem(args[0],args[1],args[2]).then(function(data){
+                                    return resolve({err:false,res:data});
+                                },function(e){
+                                  return resolve({err:e,res:null});
+                                
+                              });
+                                  break;   
+                        case 'linsert':
+                                    if(args.length!=4){
+                                      return resolve(getWrongNumberArg(cmd));
+                                    }
+                                    currentRedis.linsert(args[0],args[1],args[2],args[3]).then(function(data){
+                                      return resolve({err:false,res:data});
+                                  },function(e){
+                                    return resolve({err:e,res:null});
+                                  
+                                });
+                                    break;  
+                        case 'lindex':
+                                      if(args.length!=2){
+                                        return resolve(getWrongNumberArg(cmd));
+                                      }
+                                      currentRedis.lindex(args[0],args[1]).then(function(data){
+                                        return resolve({err:false,res:data});
+                                    },function(e){
+                                      return resolve({err:e,res:null});
+                                    
+                                  });
+                                      break;  
+                         case 'hset':
+                                if(args.length!=3){
+                                  return resolve(getWrongNumberArg(cmd));
+                                }
+                                currentRedis.hset(args[0],args[1],args[2]).then(function(data){
+                                  return resolve({err:false,res:data});
+                                  },function(e){
+                                return resolve({err:e,res:null});
+                              
+                                   });
+                          break;  
+                         case 'hsetnx':
+                                        if(args.length!=3){
+                                          return resolve(getWrongNumberArg(cmd));
+                                        }
+                                        currentRedis.hsetnx(args[0],args[1],args[2]).then(function(data){
+                                          return resolve({err:false,res:data});
+                                      },function(e){
+                                        return resolve({err:e,res:null});
+                                      
+                                    });
+                                        break;  
+                          case 'hmset':
+                                        if(args.length<3){
+                                          return resolve(getWrongNumberArg(cmd));
+                                        }
+                                        var values = args.slice(1);
+                                        currentRedis.hmset(args[0],values).then(function(data){
+                                          return resolve({err:false,res:data});
+                                      },function(e){
+                                        return resolve({err:e,res:null});
+                                      
+                                    });
+                                        break;
+                            case 'hlen':
+                                        if(args.length!=1){
+                                          return resolve(getWrongNumberArg(cmd));
+                                        }
+                                        currentRedis.hlen(args[0]).then(function(data){
+                                          return resolve({err:false,res:data});
+                                      },function(e){
+                                        return resolve({err:e,res:null});
+                                      
+                                    });
+                                        break;   
+                             case 'hdel':
+                                          if(args.length<2){
+                                            return resolve(getWrongNumberArg(cmd));
+                                          }
+                                          var values = args.slice(1);
+                                          currentRedis.hdel(args[0],values).then(function(data){
+                                            return resolve({err:false,res:data});
+                                        },function(e){
+                                          return resolve({err:e,res:null});
+                                        
+                                      });
+                                          break;  
+                              case 'hexists':
+                                          if(args.length!=2){
+                                            return resolve(getWrongNumberArg(cmd));
+                                          }
+                                          currentRedis.hexists(args[0],args[1]).then(function(data){
+                                            return resolve({err:false,res:data});
+                                        },function(e){
+                                          return resolve({err:e,res:null});
+                                        
+                                      });
+                                          break; 
+                                case 'hget':
+                                            if(args.length!=2){
+                                              return resolve(getWrongNumberArg(cmd));
+                                            }
+                                            currentRedis.hget(args[0],args[1]).then(function(data){
+                                              return resolve({err:false,res:data});
+                                          },function(e){
+                                            return resolve({err:e,res:null});
+                                          
+                                        });
+                                            break; 
+                                  case 'hmget':
+                                            if(args.length<2){
+                                              return resolve(getWrongNumberArg(cmd));
+                                            }
+                                            var values = args.slice(1);
+                                            currentRedis.hmget(args[0],values).then(function(data){
+                                              return resolve({err:false,res:data});
+                                          },function(e){
+                                            return resolve({err:e,res:null});
+                                          
+                                        });
+                                            break; 
+                                    case 'hkeys':
+                                              if(args.length!=1){
+                                                return resolve(getWrongNumberArg(cmd));
+                                              }
+                                              currentRedis.hkeys(args[0]).then(function(data){
+                                                return resolve({err:false,res:data});
+                                               },function(e){
+                                              return resolve({err:e,res:null});
+                                            
+                                             });
+                                              break;
+                                    case 'hgetall':   
+                                        if(args.length!=1){
+                                          return resolve(getWrongNumberArg(cmd));
+                                        }
+                                        currentRedis.hgetall(args[0]).then(function(data){
+                                          return resolve({err:false,res:data});
+                                          },function(e){
+                                            return resolve({err:e,res:null});
+                                          
+                                        });
+                                        break;                  
+                                            
+                                    case 'hscan':
+                                          if(args.length<3){
+                                            return resolve(getWrongNumberArg(cmd));
+                                          }
+                                         var values = args.slice(2);
+                                        
+                                         
+                                         currentRedis.hscan(args[0],args[1],values).then(function(data){
+                                              return resolve({err:false,res:data});
+                                          },function(e){
+                                            return resolve({err:e,res:null});
+                                           
+                                        });
+                                        break;
+                                      case 'hstrlen':
+                                          if(args.length!=2){
+                                            return resolve(getWrongNumberArg(cmd));
+                                          }
+                                         currentRedis.hstrlen(args[0],args[1]).then(function(data){
+                                              return resolve({err:false,res:data});
+                                          },function(e){
+                                            return resolve({err:e,res:null});
+                                           
+                                        });
+                                        break;
+                                        case 'hvals':
+                                          if(args.length!=1){
+                                            return resolve(getWrongNumberArg(cmd));
+                                          }
+                                         currentRedis.hvals(args[0]).then(function(data){
+                                              return resolve({err:false,res:data});
+                                          },function(e){
+                                            return resolve({err:e,res:null});
+                                           
+                                        });
+                                        break;
+                                      
+                                      
+                                                 
+                    
+
+                                  
+                    
+                    
       default:
         if (cmd) {
           return resolve({err:"notSupport conmmand:"+cmd,res:""});
@@ -475,14 +1052,19 @@ const command =function(profile,cmd,args){
 }
   return {
     init:function(profile,redis){
-      map.set(profile,redis);
+      if(!map.has(profile)){
+        map.set(profile,redis);
+      } 
     },
     getRedis:function(profile){
-      return this.map;
+      return map;
     },
     CMDS_DESC :CMDS_DESC,
     parseCmd : command,
-    defautKeysSize:defautKeysSize
+    defautKeysSize:defautKeysSize,
+    resetSlotMap:function(){
+      slotMap=new Map();
+    }
   }
 };
 module.exports={
