@@ -31,7 +31,7 @@
       var content = [];
       var isShowTree = false;   
       var currentTabIndex =0;
-     
+      initShenlanRedis();
     //   setRedisConfig();
     // function setRedisConfig(){
     //   store.Store().set("config",getRedisConfig());
@@ -41,8 +41,114 @@
     initTab();
     initUIComps();
     
+    
   });
-  
+  function initShenlanRedis(){
+    if(store.Store().get("config")==null){
+      store.Store().set("config",getRedisConfig());
+    }
+  }
+  function getRedisConfig(){
+   var options=
+  [{"profile":"localhost","connection":{
+  port: 6379, // Redis port
+  host: "localhost", // Redis host
+  password: "",
+  db: 0,
+  retryStrategy: function(times) {
+    var delay = Math.min(times * 50, 2000);
+    return delay;
+    }
+  }},
+  {"profile":"dev","connection":{
+  port: 16379, // Redis port
+  host: "10.1.1.97", // Redis host
+  password: "HN6Di0bdsIoTTb1A",
+  db: 0,
+  retryStrategy: function(times) {
+    var delay = Math.min(times * 50, 2000);
+    return delay;
+    }
+  }},
+  {"profile":"test","connection":[{
+        port: 6379,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      }, {
+        port: 6380,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      }, {
+        port: 6381,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      },{
+        port: 6382,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      }, {
+        port: 6383,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      }, {
+        port: 6384,
+        password: 'deepblue',
+        host: '10.1.1.95'
+      }]},
+      {"profile":"uat","connection":[{
+        port: 6380,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      }, {
+        port: 6385,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      }, {
+        port: 6381,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      },{
+        port: 6382,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      }, {
+        port: 6383,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      }, {
+        port: 6384,
+        password: 'deepblue',
+        host: '10.1.1.65'
+      }]},
+      {"profile":"pro","connection":[{
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.34.254'
+      }, {
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.33.38'
+      }, {
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.33.105'
+      },{
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.34.130'
+      }, {
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.35.193'
+      }, {
+        port: 6379,
+        password: '310c8cabcdefghf2d8abcdefd44496ac80',
+        host: '10.16.33.139'
+      }]}        
+]
+
+return options;
+}
   function initTerminal(){
       term.Terminal('#input-line'+currentTabIndex+' .cmdline', '#container'+currentTabIndex+' output',currentTabIndex);
       $('#input-line'+currentTabIndex+' .prompt').html('use command "help" to show usage>');
@@ -403,7 +509,7 @@
       });
     command.parseCmd(profile,'keysv',arg).then(function (data){
       if(data.res){
-        if(data.res.length<=command.defautKeysSize){
+        if(data.res.length<=100){
           $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>"+syntaxHighlight(data.res));
         }else{
           $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>"+"<p>"+JSON.stringify(data.res, undefined, 2)+"</p>");
@@ -1063,9 +1169,10 @@
             <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
               <div id="vContent" class="vContent">
                 1.The UI only supports simple queries.<br>
-                2.The Terminal operation is highly recommended for more commands and data presentation.<br>
-                3.Terminal type 'help' query to use.<br>
-                4.Keys,keysc, and keysv commands are implemented with scan, and keysv implements queries with pipeline, as well as in cluster<br>
+                2.UI grouping and key are not complete, you can use the search key.<br>
+                3.The Terminal operation is highly recommended for more commands and data presentation.<br>
+                4.Terminal type 'help' query to use.<br>
+                5.Keys,keysc, and keysv commands are implemented with scan, and keysv implements queries with pipeline, as well as in cluster<br>
               </div>
               <!-- <div title="About" style="padding:10px" data-options="closable:true">
                 <p style="font-size:14px">jQuery EasyUI framework helps you build your web pages easily.</p>

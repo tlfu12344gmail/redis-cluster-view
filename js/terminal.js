@@ -346,7 +346,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
           }
           $('#searching'+currentTab).remove();
           output("<p class=\"pSize\">size:"+newArr.length+"</p>",true);
-          if(newArr.length<=command.defautKeysSize){
+          if(newArr.length<=100){
             output(syntaxHighlight(newArr),true);
           }else{
             output(JSON.stringify(newArr, undefined, 2));
@@ -354,7 +354,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
           
           //console.log(JSON.stringify(newArr,null,2));
       }else if($.isPlainObject(data.res)){
-        if(newArr.length<=command.defautKeysSize){
+        if(newArr.length<=100){
           output(syntaxHighlight(data.res),true);
         }else{
           output(JSON.stringify(data.res, undefined, 2));

@@ -6,7 +6,7 @@ util.toArray = function(list) {
 };
 var map = new Map();
 var slotMap = new Map();
-var defautKeysSize=10000;
+var defautKeysSize=1000;
 var defaultGroupSize = defautKeysSize/50;
 const CMDS_DESC=[
   'show cons|dbs|commands',
@@ -78,35 +78,39 @@ var RedisCommand = RedisCommand || function() {
   const getNodeKeys = async(node, pattern,max) => {
     const result = [];
     let cursor = 0;
-    var map = new Map();
+   // var map = new Map();
+   var count=10000;
+   if(max!=-1){
+     count = defautKeysSize;
+   }
     while (true) {
-        var { matched, cursor: newCursor } = await scan(node,cursor, pattern,10000);
-        var nerrArr=[];
-        if(max!=-1){
-        for(var i=0;i<matched.length;i++){
-          if(matched[i].indexOf(":")==-1){
-            nerrArr.push(matched[i]);
-          }else{
-            var group = matched[i].substr(0,matched[i].indexOf(":"));
-           if(map.get(group)!=null){
-             var count = map.get(group);
-             if(count<defaultGroupSize){
-              nerrArr.push(matched[i]);
-             }
-             map.set(group,++count);
-           }else{
-            nerrArr.push(matched[i]);
-            map.set(group,1);
-           }
-          }
-        }
-        if(nerrArr.length>max){
-          nerrArr = nerrArr.slice(0,max);
-        }
-       }else{
-        nerrArr=matched;
-       }
-        result.push(...nerrArr);
+        var { matched, cursor: newCursor } = await scan(node,cursor, pattern,count);
+      //   var nerrArr=[];
+      //   if(max!=-1){
+      //   for(var i=0;i<matched.length;i++){
+      //     if(matched[i].indexOf(":")==-1){
+      //       nerrArr.push(matched[i]);
+      //     }else{
+      //       var group = matched[i].substr(0,matched[i].indexOf(":"));
+      //      if(map.get(group)!=null){
+      //        var count = map.get(group);
+      //        if(count<defaultGroupSize){
+      //         nerrArr.push(matched[i]);
+      //        }
+      //        map.set(group,++count);
+      //      }else{
+      //       nerrArr.push(matched[i]);
+      //       map.set(group,1);
+      //      }
+      //     }
+      //   }
+      //   if(nerrArr.length>max){
+      //     nerrArr = nerrArr.slice(0,max);
+      //   }
+      //  }else{
+      //   nerrArr=matched;
+      //  }
+        result.push(...matched);
         cursor = newCursor;
         if(max!=-1&&result.length>=max){
           break;
@@ -115,7 +119,7 @@ var RedisCommand = RedisCommand || function() {
             break;
         }
     }
-    map = new Map();
+    //map = new Map();
    return Array.from(new Set(result));
 };
 function initClusterSlotMap(slots){
@@ -406,6 +410,10 @@ const command =function(profile,cmd,args){
       case 'keys':
         if(args.length!=2){
           return resolve(getWrongNumberArg(cmd));
+        }
+        var key = args[0];
+        if(key.indexOf("��")==0){
+          args[0]="*"+key.substr(5);
         }
         if(instance.isCluster){
           var masters = currentRedis.nodes("master");
@@ -1108,6 +1116,7 @@ const command =function(profile,cmd,args){
     CMDS_DESC :CMDS_DESC,
     parseCmd : command,
     defautKeysSize:defautKeysSize,
+    defaultGroupSize:defaultGroupSize,
     resetSlotMap:function(){
       slotMap=new Map();
     }
