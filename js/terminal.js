@@ -63,14 +63,34 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
       //cmdLine_.focus();
       $("#input-line"+currentTab+" .cmdline").focusEnd();
     }
-   
-    
+  });
+  $("#south").bind('dblclick', function(e){
+    if(e.target.className=="pSize"){
+      var text = $(e.target).next();
+        if(text){
+          selectRange(text[0]);
+        }
+      } 
   });
  // cmdLine_.addEventListener('click', inputTextClick_, false);
   cmdLine_.addEventListener('keyup', historyHandler_, false);
   cmdLine_.addEventListener('keydown', processNewCommand_, false);
 
-  
+  function selectRange(text){
+    if (document.body.createTextRange)
+     {
+                var range = document.body.createTextRange();
+                range.moveToElementText(text);
+                range.select();
+      } else if (window.getSelection) {
+                var selection = window.getSelection();
+                var range = document.createRange();
+                range.selectNodeContents(text);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                              
+        } 
+  }
   //
   function inputTextClick_(e) {
     this.value = this.value;
@@ -279,7 +299,9 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
   function help(){
     var html="show cons ----show existing connections<br>"+
               "use ${con} ----use a connection<br>"+
-              "show commands ----show supported commands <br>";
+              "show commands ----show supported commands<br>"+
+              "clear ---to clear output in terminal<br>"+
+              "ctrl+c ---quit the current terminal connection<br>";
       output(html);    
     
   }
@@ -318,18 +340,26 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
                 
               }
              // $('#searching').remove();
-              output("size:"+newArr.length);
+              output("<p class=\"pSize\">size:"+newArr.length+"</p>",true);
               output(outputShow);
               return;
           }
           $('#searching'+currentTab).remove();
-          output("size:"+newArr.length);
-          output(syntaxHighlight(newArr));
+          output("<p class=\"pSize\">size:"+newArr.length+"</p>",true);
+          if(newArr.length<=command.defautKeysSize){
+            output(syntaxHighlight(newArr),true);
+          }else{
+            output(JSON.stringify(newArr, undefined, 2));
+          }
+          
           //console.log(JSON.stringify(newArr,null,2));
       }else if($.isPlainObject(data.res)){
-        output(syntaxHighlight(data.res));
-      }else{
-        
+        if(newArr.length<=command.defautKeysSize){
+          output(syntaxHighlight(data.res),true);
+        }else{
+          output(JSON.stringify(data.res, undefined, 2));
+        }
+      }else{ 
         output(data.res);
       }
       
@@ -468,7 +498,8 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
   function showCommands(){
     var commands="";
     for(var i=0;i<CMDS_DESC.length;i++){
-      commands=commands+CMDS_DESC[i]+"<br>"
+      var j = i+1;
+      commands=commands+j+") "+CMDS_DESC[i]+"<br>"
     }
     output(commands);
   }
@@ -500,9 +531,14 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
   }
 
   //
-  function output(html) {
+  function output(html,noNeedp) {
     $('#searching'+currentTab).remove();
-    output_.insertAdjacentHTML('beforeEnd', '<p>' + html + '</p>');
+    if(noNeedp){
+      output_.insertAdjacentHTML('beforeEnd', html);
+    }else{
+      output_.insertAdjacentHTML('beforeEnd', '<p>' + html + '</p>');
+    }
+    
     //window.scrollTo(0, getDocHeight_());
     $("#container"+currentTab).scrollTop($("#container"+currentTab)[0].scrollHeight+32);
   }
@@ -536,7 +572,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
         }
         return '<span class="' + cls + '">' + match + '</span>';
     });
-    return '<pre id="result">'+str+'</pre>';
+    return '<pre>'+str+'</pre>';
 
 }
   //

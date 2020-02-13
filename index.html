@@ -40,6 +40,7 @@
     resize();
     initTab();
     initUIComps();
+    
   });
   
   function initTerminal(){
@@ -177,22 +178,30 @@
     initCC();
     initContentView();
   }
-  function initContentView(){
-          $("#sccCenter").bind("dblclick",function(e){
-                  var text=document.getElementById("vContent");
-                        if (document.body.createTextRange) {
-                                var range = document.body.createTextRange();
-                                range.moveToElementText(text);
-                                range.select();
-                            } else if (window.getSelection) {
-                                var selection = window.getSelection();
-                                var range = document.createRange();
-                                range.selectNodeContents(text);
-                                selection.removeAllRanges();
-                                selection.addRange(range);
+  function selectRange(text){
+    if (document.body.createTextRange)
+     {
+                var range = document.body.createTextRange();
+                range.moveToElementText(text);
+                range.select();
+      } else if (window.getSelection) {
+                var selection = window.getSelection();
+                var range = document.createRange();
+                range.selectNodeContents(text);
+                selection.removeAllRanges();
+                selection.addRange(range);
                               
-                            } 
-
+        } 
+  }
+  function initContentView(){
+          $("#vContent").bind("dblclick",function(e){
+                  //e.preventDefault();
+                  if(e.target.className=="pSize"){
+                    var text = $(e.target).next();
+                      if(text){
+                        selectRange(text[0]);
+                      }
+                    } 
            });
   }
   var contentJson =[];
@@ -269,6 +278,8 @@
                   var s = node.text;
                   if(node.type=="db"){
                    // console.log(node);
+                  }else if (node.childrenLength){
+                    s += ' <span style=\'color:blue\'>(' + node.childrenLength + ')</span>';
                   }else if (node.children){
                     s += ' <span style=\'color:blue\'>(' + node.children.length + ')</span>';
                   }
@@ -280,6 +291,15 @@
     },
     onLoadError:function(arg){
       $.messager.progress('close');
+    },
+    onBeforeExpand:function(node){
+      if(node.type=="group"){  
+        if(node.children&&node.children.length>0){
+            return;
+        }else{
+          loadDbData(isCluster,profile,node.text+":*",node);
+        }
+        }
     },
     onContextMenu: function(e, node){
 	    	e.preventDefault();
@@ -294,12 +314,14 @@
     }
 	},
     onDblClick:function(node){
-      initRedisConnect(profile,node.db);
       if(node.type=="db"){
+        initRedisConnect(profile,node.db);
         loadDbData(isCluster,profile,"*",node);
       }else if(node.type=="group"){
-          loadDbData(isCluster,profile,node.text+"*",node);
+        initRedisConnect(profile,node.db);
+          loadDbData(isCluster,profile,node.text+":*",node);
         }else if(node.type=="key"){
+          initRedisConnect(profile,node.db);
           loadKeyValue(isCluster,profile,node);
         }
       
@@ -369,8 +391,8 @@
       var isCluster = v.split("=")[0];
       var profile = v.split("=")[1];
       var arg=[];
-      arg.push(node.text+"*");
-      arg.push(-1);
+      arg.push(node.text+":*");
+      arg.push(command.defautKeysSize);
     if(!eval(isCluster)) {
       profile=profile+":"+node.db;
      }
@@ -381,7 +403,11 @@
       });
     command.parseCmd(profile,'keysv',arg).then(function (data){
       if(data.res){
-        $("#vContent").html("<p>size:"+data.res.length+"</<p>"+syntaxHighlight(data.res));
+        if(data.res.length<=command.defautKeysSize){
+          $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>"+syntaxHighlight(data.res));
+        }else{
+          $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>"+"<p>"+JSON.stringify(data.res, undefined, 2)+"</p>");
+        }
         $.messager.progress('close');
       }
     });
@@ -464,7 +490,13 @@
         $.messager.progress('close');
       })
   }
-  function loadDbData(isCluster,profile,pattern,selected){
+  function loadDbData(isCluster,profile,pattern,selected,isSearch){
+    var db = $("#databaseSelect").combobox("getValue");
+    var nodeId = db.split(":")[1].replace("db","");
+    if(selected.db!=nodeId){
+      $('#ss').searchbox('setValue', '');
+    }
+   
     $.messager.progress({
          title: 'info',
          msg: 'loading......',
@@ -473,7 +505,11 @@
     var arg=[];
     arg.push(pattern);
     arg.push(command.defautKeysSize);
-   if(!isCluster) {
+  //  if(!isCluster) {
+  //   profile=profile+":"+selected.db;
+  //  }
+  var profileMap = redisCommand.RedisCommand().getRedis();
+   if(profileMap&&!profileMap.has(profile)){
     profile=profile+":"+selected.db;
    }
     command.parseCmd(profile,'keys',arg).then(function (data){
@@ -484,9 +520,15 @@
         for(var i=0;i<selectedChildren.length;i++){
         $('#tt').tree('remove', selectedChildren[i].target);
         }
+        var data = [];
+        if(isSearch&&pattern.replace(/\*/g,"")!=""){
+          data=buildNodeChildren(profile,arr,false);
+        }else{
+          data=bulidDbChildren(profile,arr,true);
+        }
         $('#tt').tree('append', {
 	      parent: selected.target,
-	      data: buildNodeChildren(profile,arr,true)
+	      data: data
        });
       $('#tt').tree('select',selected.target);
       }else if(selected.type=="group"){
@@ -519,6 +561,43 @@
       $.messager.progress('close');
   });
 }
+  function bulidDbChildren(profile,arr,isClose){
+    var db=0;
+    if(profile.indexOf(":")!=-1){
+      db = Number(profile.split(":")[1]);
+    }
+    var children=[]
+    var map = new Map();
+      for(var i=0;i<arr.length;i++){
+        var key = {};
+        if(arr[i].indexOf(":")==-1){
+          key.id = arr[i];
+          key.text = arr[i];
+          key.type = "key";
+          key.db = db;
+          children.push(key);
+        }else{
+          var group = arr[i].substr(0,arr[i].indexOf(":"));
+          if(map.get(group)!=null){
+            key = children[map.get(group)];
+            key.childrenLength = key.childrenLength+1;
+          }else{
+            key.id = group;
+            key.text = group;
+            key.type = "group";
+            key.db = db;
+            key.state = "closed";
+            key.childrenLength = 1;
+            if(isClose){
+              
+            }
+            children.push(key);
+            map.set(group,children.length-1);
+          }
+        }
+      }
+      return children;
+  }
   function buildNodeChildren(profile,arr,isClose){
     var db=0;
     if(profile.indexOf(":")!=-1){
@@ -535,7 +614,7 @@
           key.db = db;
           children.push(key);
         }else{
-          var group = arr[i].substr(0,arr[i].lastIndexOf(":"));
+          var group = arr[i].substr(0,arr[i].indexOf(":"));
           if(map.get(group)!=null){
             key = children[map.get(group)];
             var subKey={};
@@ -956,62 +1035,7 @@
   function formatItem(row){
 			var s = '<span style="font-weight:bold">' + row.profile + '</span><div style="text-align: right;display:inline;float:right;"><a href="#" id='+row.profile+'edit></a><a href="#" id='+row.profile+'></a></div>'
 			return s;
-		}
-  function getRedisConfig(){
-   var options=
-  [{"profile":"dev","connection":{
-  port: 16379, // Redis port
-  host: "10.1.1.97", // Redis host
-  password: "HN6Di0bdsIoTTb1A",
-  db: 0,
-  retryStrategy: function(times) {
-    var delay = Math.min(times * 50, 2000);
-    return delay;
-    }
-  }},
-  {"profile":"test","connection":[{
-        port: 6379,
-        password: 'deepblue',
-        host: '10.1.1.95'
-      }, {
-        port: 6380,
-        password: 'deepblue',
-        host: '10.1.1.95'
-      }, {
-        port: 6381,
-        password: 'deepblue',
-        host: '10.1.1.95'
-      }]},
-      {"profile":"uat","connection":[{
-        port: 6380,
-        password: 'deepblue',
-        host: '10.1.1.65'
-      }, {
-        port: 6385,
-        password: 'deepblue',
-        host: '10.1.1.65'
-      }, {
-        port: 6381,
-        password: 'deepblue',
-        host: '10.1.1.65'
-      }]},
-      {"profile":"pro","connection":[{
-        port: 6379,
-        password: '310c8cabcdefghf2d8abcdefd44496ac80',
-        host: '10.16.34.254'
-      }, {
-        port: 6379,
-        password: '310c8cabcdefghf2d8abcdefd44496ac80',
-        host: '10.16.33.38'
-      }, {
-        port: 6379,
-        password: '310c8cabcdefghf2d8abcdefd44496ac80',
-        host: '10.16.33.105'
-      }]}        
-]
-
-return options;
-}
+	}
   function doSearch(value){
       
       var db = $("#databaseSelect").combobox("getValue");
@@ -1020,14 +1044,14 @@ return options;
         return;
       }
       var nodeId = db.split(":")[1].replace("db","");
-      loadDbData(db.split(":")[0],value,$('#tt').tree('find', nodeId));
+      loadDbData(false,db.split(":")[0],value,$('#tt').tree('find', nodeId),true);
 		}
 </script>      
   </head>
   <body>
     <div id="cc" class="easyui-layout" style="width:100%;height:100%;">
       <div id="easyui-panel-connection" data-options="region:'west',title:'connections',split:true,minWidth:250,maxWidth:400" style="width:250px;">
-        <input class="easyui-searchbox" data-options="prompt:'Please Input Key,ex:*key*',searcher:doSearch" style="width:100%"></input>
+        <input id="ss" class="easyui-searchbox" data-options="prompt:'Please Input Key,e.g:*key*',searcher:doSearch" style="width:100%"></input>
         <div  class="easyui-panel" style="padding:5px;overflow-y:auto;width: 100%;">
           <ul id="tt"></ul>
         </div>
@@ -1038,7 +1062,10 @@ return options;
           <div id="sccCenter" data-options="region:'center',border:false">
             <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
               <div id="vContent" class="vContent">
-               here will show the keys which you selected content 
+                1.The UI only supports simple queries.<br>
+                2.The Terminal operation is highly recommended for more commands and data presentation.<br>
+                3.Terminal type 'help' query to use.<br>
+                4.Keys,keysc, and keysv commands are implemented with scan, and keysv implements queries with pipeline, as well as in cluster<br>
               </div>
               <!-- <div title="About" style="padding:10px" data-options="closable:true">
                 <p style="font-size:14px">jQuery EasyUI framework helps you build your web pages easily.</p>

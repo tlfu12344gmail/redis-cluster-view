@@ -6,7 +6,7 @@ util.toArray = function(list) {
 };
 var map = new Map();
 var slotMap = new Map();
-var defautKeysSize=1000;
+var defautKeysSize=10000;
 var defaultGroupSize = defautKeysSize/50;
 const CMDS_DESC=[
   'show cons|dbs|commands',
@@ -68,8 +68,7 @@ const CMDS_DESC=[
   'hscan key cursor [MATCH pattern] [COUNT count]',
   'hstrlen key field',
   'hvals key',
-
-  'clear'
+  "clear"
 ];
 var RedisCommand = RedisCommand || function() {
   
@@ -88,7 +87,7 @@ var RedisCommand = RedisCommand || function() {
           if(matched[i].indexOf(":")==-1){
             nerrArr.push(matched[i]);
           }else{
-            var group = matched[i].substr(0,matched[i].lastIndexOf(":"));
+            var group = matched[i].substr(0,matched[i].indexOf(":"));
            if(map.get(group)!=null){
              var count = map.get(group);
              if(count<defaultGroupSize){
@@ -212,15 +211,17 @@ function buildPipelineArr(keys,commands){
   return arr;
 }
 function getZSetV(currentRedis,keys){
-  var arr =[];
+  var arr=[];
                    
   for(var i=0;i<keys.length;i++){
     var typeCommand=[];
-    typeCommand.push("zrange");
+    typeCommand.push("zscan");
     typeCommand.push(keys[i]);
     typeCommand.push(0);
-    typeCommand.push(-1);
-    typeCommand.push("WITHSCORES");
+    typeCommand.push("MATCH");
+    typeCommand.push("*");
+    typeCommand.push("COUNT");
+    typeCommand.push(defaultGroupSize);
     arr.push(typeCommand);
     }
   return new Promise(function(resolve,reject){
@@ -230,7 +231,7 @@ function getZSetV(currentRedis,keys){
         var kv = {};
         kv.key = keys[i];
         kv.type = 'zset';
-        kv.value = data[i][1];
+        kv.value = data[i][1][1];
         kvArr.push(kv);
       }
      return resolve(kvArr);
@@ -238,7 +239,20 @@ function getZSetV(currentRedis,keys){
     });
 }
 function getSetV(currentRedis,keys){
-  var arr = buildPipelineArr(keys,'smembers');
+  var arr=[];
+                   
+  for(var i=0;i<keys.length;i++){
+    var typeCommand=[];
+    typeCommand.push("sscan");
+    typeCommand.push(keys[i]);
+    typeCommand.push(0);
+    typeCommand.push("MATCH");
+    typeCommand.push("*");
+    typeCommand.push("COUNT");
+    typeCommand.push(defaultGroupSize);
+    arr.push(typeCommand);
+    }
+ 
   return new Promise(function(resolve,reject){
     currentRedis.pipeline(arr).exec().then(function(data){
       var kvArr=[];
@@ -246,14 +260,14 @@ function getSetV(currentRedis,keys){
         var kv = {};
         kv.key = keys[i];
         kv.type = 'set';
-        kv.value = data[i][1];
+        kv.value = data[i][1][1];
         kvArr.push(kv);
       }
      return resolve(kvArr);
     })
     });
 }
-function getListV(currentRedis,keys){
+function getListV(currentRedis,keys){ 
   var arr =[];
                    
   for(var i=0;i<keys.length;i++){
@@ -261,7 +275,7 @@ function getListV(currentRedis,keys){
     typeCommand.push("lrange");
     typeCommand.push(keys[i]);
     typeCommand.push(0);
-    typeCommand.push(-1);
+    typeCommand.push(defaultGroupSize);
     arr.push(typeCommand);
     }
   return new Promise(function(resolve,reject){
@@ -279,7 +293,19 @@ function getListV(currentRedis,keys){
     });
 }
 function getHashV(currentRedis,keys){
-  var arr = buildPipelineArr(keys,"hgetall");                 
+  var arr=[];
+                   
+  for(var i=0;i<keys.length;i++){
+    var typeCommand=[];
+    typeCommand.push("hscan");
+    typeCommand.push(keys[i]);
+    typeCommand.push(0);
+    typeCommand.push("MATCH");
+    typeCommand.push("*");
+    typeCommand.push("COUNT");
+    typeCommand.push(defaultGroupSize);
+    arr.push(typeCommand);
+    }               
   return new Promise(function(resolve,reject){
     currentRedis.pipeline(arr).exec().then(function(data){
       var kvArr=[];
@@ -287,7 +313,7 @@ function getHashV(currentRedis,keys){
         var kv = {};
         kv.key = keys[i];
         kv.type = 'hash';
-        kv.value = data[i][1];
+        kv.value = data[i][1][1];
         kvArr.push(kv);
       }
      return resolve(kvArr);
@@ -507,6 +533,32 @@ const command =function(profile,cmd,args){
           currentRedis.get(args[0], function (err, res) {
               return resolve({err,res});
           });
+          // for(var i=0;i<100000;i++){
+          //   currentRedis.set("tzsu:age:"+i,i,function(err,res){
+
+          //   })
+          // }
+          // for(var i=0;i<10000;i++){
+          //   currentRedis.set("xinyin:addr:"+i,"tzsu:addr:"+i,function(err,res){
+              
+          //   })
+          // }
+          // for(var i=0;i<1000;i++){
+          //   currentRedis.set("tianming:tel:"+i,"tzsu:tel:"+i,function(err,res){
+              
+          //   })
+          // }
+          // for(var i=0;i<500;i++){
+          //   currentRedis.set("guang:hand:"+i,"tzsu:hand:"+i,function(err,res){
+              
+          //   })
+          // }
+          // for(var i=0;i<200;i++){
+          //   currentRedis.set("xu:sun:"+i,"tzsu:sun:"+i,function(err,res){
+              
+          //   })
+          // }
+
         break;
       case 'type':
           if(args.length>1){
@@ -1036,13 +1088,7 @@ const command =function(profile,cmd,args){
                                         });
                                         break;
                                       
-                                      
-                                                 
-                    
-
-                                  
-                    
-                    
+                                             
       default:
         if (cmd) {
           return resolve({err:"notSupport conmmand:"+cmd,res:""});
