@@ -10,14 +10,16 @@
     <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/default/easyui.css">
     <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/icon.css">
     <link href="./css/terminal.css" rel="stylesheet" type="text/css" />
-    <link href="./css/easyui-cus.css" rel="stylesheet" type="text/css" />
+    <link href="./css/easyui-cus.css" rel="stylesheet" type="text/css" /> 
+    <link href="./css/jquery.json-viewer.css" type="text/css" rel="stylesheet">
     <link rel="import" href="./edit.html">
 	 <!-- <link rel="stylesheet" type="text/css" href="./jquery-easyui/demo/demo.css"> -->
       <!--<script src="http://www.codehelper.io/api/ips/?js"></script>-->
-      
+      <!-- <script src="json-viewer/jquery.json-viewer.js"></script> -->
       <script>
       window.$ = window.jQuery = require("./jquery-easyui/jquery.min.js");
-      require("./jquery-easyui/jquery.easyui.min.js")
+      require("./jquery-easyui/jquery.easyui.min.js");
+      require("./js/jquery.json-viewer.js");
       
       </script>
     <script> 
@@ -202,7 +204,7 @@ return options;
   
   function getTabContent(){
    return '<div title="Terminal"  style="background-color: black;">'+
-                '<div id="container'+currentTabIndex+'" style="overflow-y: auto;height:360px;width: 100%;">'+
+                '<div id="container'+currentTabIndex+'" style="overflow-y: auto;height:160px;width: 100%;">'+
                   '<output></output>'+
                   '<div id="input-line'+currentTabIndex+'" class="input-line">'+
                    '<div class="prompt"></div>'+
@@ -408,7 +410,10 @@ return options;
         }
     },
     onContextMenu: function(e, node){
-	    	e.preventDefault();
+        e.preventDefault();
+        if(node.db){
+          initRedisConnect(profile,node.db);
+        }  
     // select the node
     $('#tt').tree('select', node.target);
     if(node.type=="group"){
@@ -509,11 +514,14 @@ return options;
       });
     command.parseCmd(profile,'keysv',arg).then(function (data){
       if(data.res){
-        if(data.res.length<=100){
-          $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>"+syntaxHighlight(data.res));
-        }else{
-          $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>"+"<p>"+JSON.stringify(data.res, undefined, 2)+"</p>");
-        }
+        vContentSet(data.res);
+        // if(data.res.length<=10000){
+        //   vContentSet(data.res);
+        //   $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>");
+        // }else{
+        //   $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>"+"<p>"+JSON.stringify(data.res, undefined, 2)+"</p>");
+        //   vContentSet(data);
+        // }
         $.messager.progress('close');
       }
     });
@@ -530,7 +538,7 @@ return options;
           dd.key = key;
           dd.type = type;
           dd.value=data.res;
-          $("#vContent").html(syntaxHighlight(dd));
+          vContentSet(dd);
         }
         $.messager.progress('close');
       })
@@ -546,7 +554,7 @@ return options;
           dd.key = key;
           dd.type = type;
           dd.value=data.res;
-          $("#vContent").html(syntaxHighlight(dd));
+          vContentSet(dd);
         }
         $.messager.progress('close');
       })
@@ -563,7 +571,7 @@ return options;
           dd.key = key;
           dd.type = type;
           dd.value=data.res;
-          $("#vContent").html(syntaxHighlight(dd));
+          vContentSet(dd);
         }
         $.messager.progress('close');
       })
@@ -577,7 +585,7 @@ return options;
           dd.key = key;
           dd.type = type;
           dd.value=data.res;
-          $("#vContent").html(syntaxHighlight(dd));
+          vContentSet(dd);
         }
         $.messager.progress('close');
       })
@@ -591,10 +599,14 @@ return options;
           dd.key = key;
           dd.type = type;
           dd.value=data.res;
-          $("#vContent").html(syntaxHighlight(dd));
+          vContentSet(dd);
         }
         $.messager.progress('close');
       })
+  }
+  function vContentSet(dd){
+    $('#vContent').jsonViewer(dd, {collapsed: false, withQuotes: true, withLinks: false});
+   // $("#vContent").html(syntaxHighlight(dd));
   }
   function loadDbData(isCluster,profile,pattern,selected,isSearch){
     var db = $("#databaseSelect").combobox("getValue");

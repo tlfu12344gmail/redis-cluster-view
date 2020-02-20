@@ -443,7 +443,7 @@ const command =function(profile,cmd,args){
               }else if(cmd =='keys'){
                 resolve({err:false,res:keyArr}); 
               }else if(cmd = 'keysv'){
-                if(keyArr.length>0&& keyArr.length<=defautKeysSize){
+                if(keyArr.length>0&& keyArr.length<=defautKeysSize*(masters.length*2)){
                   getKeysV(currentRedis,true,keyArr,profile).then(function(data){  
                     var kvs = [];
                     for(var i=0;i<data.length;i++){
@@ -474,7 +474,7 @@ const command =function(profile,cmd,args){
             }else if(cmd =='keys'){
               resolve({err:false,res:Array.from(data).sort()});
             }else if(cmd = 'keysv'){
-              if(data.length>0&& data.length<=defautKeysSize){
+              if(data.length>0&& data.length<=defautKeysSize*2){
                 getKeysV(currentRedis,false,data,profile).then(function(d){  
                   var kvs = [];
                   for(var i=0;i<d.length;i++){

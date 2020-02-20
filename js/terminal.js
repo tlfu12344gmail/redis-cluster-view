@@ -346,24 +346,47 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
           }
           $('#searching'+currentTab).remove();
           output("<p class=\"pSize\">size:"+newArr.length+"</p>",true);
-          if(newArr.length<=100){
-            output(syntaxHighlight(newArr),true);
-          }else{
-            output(JSON.stringify(newArr, undefined, 2));
-          }
+          outputJson(newArr);
+          // if(newArr.length<=100){
+          //   output(syntaxHighlight(newArr),true);
+          // }else{
+          //   output(JSON.stringify(newArr, undefined, 2));
+          // }
           
           //console.log(JSON.stringify(newArr,null,2));
       }else if($.isPlainObject(data.res)){
-        if(newArr.length<=100){
-          output(syntaxHighlight(data.res),true);
-        }else{
-          output(JSON.stringify(data.res, undefined, 2));
-        }
+        outputJson(data.res);
+        // if(newArr.length<=100){
+        //   output(syntaxHighlight(data.res),true);
+        // }else{
+        //   output(JSON.stringify(data.res, undefined, 2));
+        // }
       }else{ 
         output(data.res);
       }
       
     }
+  }
+  function getUuid() {
+    var s = [];
+    var hexDigits = "0123456789abcdef";
+    for (var i = 0; i < 36; i++) {
+        s[i] = hexDigits.substr(Math.floor(Math.random() * 0x10), 1);
+    }
+    s[14] = "4"; // bits 12-15 of the time_hi_and_version field to 0010
+    s[19] = hexDigits.substr((s[19] & 0x3) | 0x8, 1); // bits 6-7 of the clock_seq_hi_and_reserved to 01
+    s[8] = s[13] = s[18] = s[23] = "-";
+
+    var uuid = s.join("");
+    return uuid;
+}
+  function outputJson(dd){
+    $('#searching'+currentTab).remove();
+   var uuid = getUuid();
+    output_.insertAdjacentHTML('beforeEnd', '<p id='+uuid+'></p>');
+    $('#'+uuid).jsonViewer(dd, {collapsed: false, withQuotes: true, withLinks: false});
+    //window.scrollTo(0, getDocHeight_());
+    $("#container"+currentTab).scrollTop($("#container"+currentTab)[0].scrollHeight+32);
   }
   function useDb(db){
     if(db>=0&&db<=50){
@@ -379,6 +402,9 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
    }else{
     var config = s.Store().get("config");
     var useCon = null;
+    if(command.getRedis()&&command.getRedis().get(currentProfile)!=null){
+      useCon = command.getRedis().get(currentProfile).redis.options
+    }
     for(var i=0;i<config.length;i++){
       if(config[i].profile == currentProfile){
         useCon = config[i].connection;
