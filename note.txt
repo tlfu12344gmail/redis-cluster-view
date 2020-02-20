@@ -1,0 +1,4 @@
+electron.zip放的目录：
+mac:Library/Caches/electron/
+win:C:\Users\电脑名称（注意更换自己的电脑名称）\AppData\Local\electron-builder\cache
+linux:~/.cahce/electron/
