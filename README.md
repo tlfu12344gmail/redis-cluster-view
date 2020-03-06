@@ -12,5 +12,3 @@ npm run package (默认打dmg，修改package.json中package即可，--mac;--win
 
 Each platform can only have its own package
 
-## download
-see release-package dir
