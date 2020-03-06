@@ -2,3 +2,4 @@ node_modules
 dist
 shenlan.txt
 release-package
+package-lock.json

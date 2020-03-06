@@ -1,6 +1,6 @@
 # redis-cluster-view
 
-![avatar](./img/view.png)
+![avatar](./img/pre.png)
 
 ## run
 npm install
