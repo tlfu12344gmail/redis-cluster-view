@@ -1,1132 +1,1207 @@
-
 <!DOCTYPE html>
 
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
-    <title>redis-cluster-view</title>
-    
-    <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/default/easyui.css">
-    <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/icon.css">
-    <link href="./css/terminal.css" rel="stylesheet" type="text/css" />
-    <link href="./css/easyui-cus.css" rel="stylesheet" type="text/css" /> 
-    <link href="./css/jquery.json-viewer.css" type="text/css" rel="stylesheet">
-    <link rel="import" href="./edit.html">
-	 <!-- <link rel="stylesheet" type="text/css" href="./jquery-easyui/demo/demo.css"> -->
-      <!--<script src="http://www.codehelper.io/api/ips/?js"></script>-->
-      <!-- <script src="json-viewer/jquery.json-viewer.js"></script> -->
-      <script>
-      window.$ = window.jQuery = require("./jquery-easyui/jquery.min.js");
-      require("./jquery-easyui/jquery.easyui.min.js");
-      require("./js/jquery.json-viewer.js");
-      
-      </script>
-    <script> 
-      
-      var profile = "no-connection"; 
-      var store = require('./js/store.js');
-      var term = require('./js/terminal.js');
-      const redisCommand = require('./js/redis-command.js')
-      const command = redisCommand.RedisCommand();
-      const  Redis = require('ioredis');
-      var content = [];
-      var isShowTree = false;   
-      var currentTabIndex =0;
-      initRedis();
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+  <title>redis-cluster-view</title>
+
+  <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/default/easyui.css">
+  <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/icon.css">
+  <link href="./css/terminal.css" rel="stylesheet" type="text/css" />
+  <link href="./css/easyui-cus.css" rel="stylesheet" type="text/css" />
+  <link href="./css/jquery.json-viewer.css" type="text/css" rel="stylesheet">
+  <link rel="import" href="./edit.html">
+  <!-- <link rel="stylesheet" type="text/css" href="./jquery-easyui/demo/demo.css"> -->
+  <!--<script src="http://www.codehelper.io/api/ips/?js"></script>-->
+  <!-- <script src="json-viewer/jquery.json-viewer.js"></script> -->
+  <script>
+    window.$ = window.jQuery = require("./jquery-easyui/jquery.min.js");
+    require("./jquery-easyui/jquery.easyui.min.js");
+    require("./js/jquery.json-viewer.js");
+
+  </script>
+  <script>
+
+    var profile = "no-connection";
+    var store = require('./js/store.js');
+    var term = require('./js/terminal.js');
+    const redisCommand = require('./js/redis-command.js')
+    const command = redisCommand.RedisCommand();
+    const Redis = require('ioredis');
+    var content = [];
+    var isShowTree = false;
+    var currentTabIndex = 0;
+    initRedis();
     //   setRedisConfig();
     // function setRedisConfig(){
     //   store.Store().set("config",getRedisConfig());
     // }  
-    $(function() {
-    resize();
-    initTab();
-    initUIComps();
-    
-    
-  });
-  function initRedis(){
-    if(store.Store().get("config")==null){
-      store.Store().set("config",getRedisConfig());
-    }
-  }
-  function getRedisConfig(){
-   var options=
-  [{"profile":"native-demo","connection":{
-  port: 6379, // Redis port
-  host: "localhost", // Redis host
-  password: "",
-  db: 0,
-  retryStrategy: function(times) {
-    var delay = Math.min(times * 50, 2000);
-    return delay;
-    }
-  }},
-  {"profile":"cluseter-demo","connection":[{
-        port: 6379,
-        password: '1234',
-        host: 'localhost'
-      }, {
-        port: 6380,
-        password: '1234',
-        host: 'localhost'
-      }, {
-        port: 6381,
-        password: '1234',
-        host: 'localhost'
-      },{
-        port: 6382,
-        password: '1234',
-        host: 'localhost'
-      }, {
-        port: 6383,
-        password: '1234',
-        host: 'localhost'
-      }, {
-        port: 6384,
-        password: '1234',
-        host: 'localhost'
-      }]}      
-]
+    $(function () {
+      resize();
+      initTab();
+      initUIComps();
 
-return options;
-}
-  function initTerminal(){
-      term.Terminal('#input-line'+currentTabIndex+' .cmdline', '#container'+currentTabIndex+' output',currentTabIndex);
-      $('#input-line'+currentTabIndex+' .prompt').html('use command "help" to show usage>');
-  }
-  function initTab(){
-    $('#tabs').tabs('add',{
-    title:'terminal-0',
-    content:getTabContent(),
-    closable:false,
-    //cache:false,
-    tools:[{
-		iconCls:'icon-add',
-		handler:function(){
-			addTab();
+
+    });
+    function initRedis() {
+      if (store.Store().get("config") == null) {
+        store.Store().set("config", getRedisConfig());
+      }
     }
-    }]
-    });
-    initTerminal(0);
-    $('#tabs').tabs({
-      onSelect:function(title,index){
-        cssRisize();
-      }
-    });
-    //panel-tool-restore
-   $("#tabs .tabs-wrap").append('<div class="panel-tool"><a href="javascript:;" class="panel-tool-max"></a><a href="javascript:;" class="layout-button-down"></a></div>');
-   $("#tabs .tabs-wrap .panel-tool-max").bind('click',function(e){
-     if($(this).hasClass('panel-tool-restore')){
-      $(this).removeClass('panel-tool-restore');
-      $('#centerCC').layout('panel', 'south').panel('resize',{height:160});
-      $('#centerCC').layout('resize');
-     }else{
-      $(this).addClass('panel-tool-restore');
-      //$('#centerCC').layout().panel('south').resize({'height':500});
-      $('#centerCC').layout('panel', 'south').panel('resize',{height:$("#centerCC").css('height')});
-      $('#centerCC').layout('resize');
-     }
-   });
-   $("#tabs .tabs-wrap a[class*='layout-button']").bind('click',function(e){
-     var display =$('#south').css('display');
-     if($(this).hasClass('layout-button-down')||display != 'none'){
-      $(this).removeClass('layout-button-down');
-      $(this).addClass('layout-button-up');
-      $('#centerCC').layout('collapse','south');
-     }else{
-      $(this).removeClass('layout-button-up');
-      $(this).addClass('layout-button-down');
-      $('#centerCC').layout('expand','south');
-     }
-   });
-  }
-  
-  function getTabContent(){
-   return '<div title="Terminal"  style="background-color: black;">'+
-                '<div id="container'+currentTabIndex+'" style="overflow-y: auto;height:160px;width: 100%;">'+
-                  '<output></output>'+
-                  '<div id="input-line'+currentTabIndex+'" class="input-line">'+
-                   '<div class="prompt"></div>'+
-                    '<div style="position: relative;">'+
-                      '<input  class="cmdline"/><span class="placeholder"></span>'+
-                    '</div>'+
-                  '</div>'+
-                '</div>'+
-             '</div> ';
-  }
-  function addTab(){
-    currentTabIndex++;
-    $('#tabs').tabs('add',{
-    title:'terminal-'+currentTabIndex,
-    content:getTabContent(),
-    closable:true
-   // cache:false
-    });
-    initTerminal();
-  }
-  $.extend($.fn.panel.methods, {
-      showMask: function(jq, msg){
-      return jq.each(function(){
-      var pal = $(this).panel('panel');
-      if (pal.css('position').toLowerCase() != 'absolute'){
-      pal.css('position','relative');
-      }
-      var borderSize = parseInt(pal.css('padding'))+1;
-      var m = pal.children('div.panel-mask');
-      if (!m.length){
-      m = $('<div class="panel-mask"></div>').appendTo(pal);
-      }
-      m.css({
-      background:'#fff',
-      left:borderSize,
-      top:(borderSize+pal.children('.panel-header')._outerHeight()),
-      right:borderSize,
-      bottom:borderSize
+    function getRedisConfig() {
+      var options =
+        [{
+          "profile": "native-demo", "connection": {
+            port: 6379, // Redis port
+            host: "localhost", // Redis host
+            password: "",
+            db: 0,
+            retryStrategy: function (times) {
+              var delay = Math.min(times * 50, 2000);
+              return delay;
+            }
+          }
+        },
+        {
+          "profile": "cluseter-demo", "connection": [{
+            port: 6379,
+            password: '1234',
+            host: 'localhost'
+          }, {
+            port: 6380,
+            password: '1234',
+            host: 'localhost'
+          }, {
+            port: 6381,
+            password: '1234',
+            host: 'localhost'
+          }, {
+            port: 6382,
+            password: '1234',
+            host: 'localhost'
+          }, {
+            port: 6383,
+            password: '1234',
+            host: 'localhost'
+          }, {
+            port: 6384,
+            password: '1234',
+            host: 'localhost'
+          }]
+        }
+        ]
+
+      return options;
+    }
+    function initTerminal() {
+      term.Terminal('#input-line' + currentTabIndex + ' .cmdline', '#container' + currentTabIndex + ' output', currentTabIndex);
+      $('#input-line' + currentTabIndex + ' .prompt').html('use command "help" to show usage>');
+    }
+    function initTab() {
+      $('#tabs').tabs('add', {
+        title: 'terminal-0',
+        content: getTabContent(),
+        closable: false,
+        //cache:false,
+        tools: [{
+          iconCls: 'icon-add',
+          handler: function () {
+            addTab();
+          }
+        }]
       });
-      m.children('div.panel-mask-msg').remove();
-      var mm = $('<div class="panel-mask-msg"></div>').appendTo(m);
-      mm.html(msg).css({position:'absolute'}).css({
-      position:'absolute',
-      top: '50%',
-      left: '50%',
-      marginTop: -mm._outerHeight()/2,
-      marginLeft: -mm._outerWidth()/2
-      })
-      });
-      },
-      hideMask: function(jq){
-      return jq.each(function(){
-      $(this).panel('panel').children('div.panel-mask').remove();
-      })
-      }
-});
-  function cssRisize(){
-    $("div[id*='container']").each(function(e){
-          $(this).css('height',parseInt($('#south').css('height').replace('px',''))-35);
-          $(this).scrollTop($(this)[0].scrollHeight+32);
-          $(this).find("div[id*='input-line']").each(function(e){
-            $(this).find('.cmdline').focusEnd();
-          });
-        });
-       // $("#sccCenter .textbox").css('height',parseInt($("#sccCenter").css('height').replace('px',''))-35);   
-       
-  }
-  function resize(){
-    $('#centerCC').layout('panel', 'south').panel({
-      onResize: function (width, height) {
-        cssRisize();
+      initTerminal(0);
+      $('#tabs').tabs({
+        onSelect: function (title, index) {
+          cssRisize();
         }
       });
-     // $("#sccCenter .textbox").css('height',parseInt($("#sccCenter").css('height').replace('px',''))-35);   
-  }
-  function initUIComps(){
-    initDD();
-    initCCInput();
-    initCC();
-    initContentView();
-  }
-  function selectRange(text){
-    if (document.body.createTextRange)
-     {
-                var range = document.body.createTextRange();
-                range.moveToElementText(text);
-                range.select();
+      //panel-tool-restore
+      $("#tabs .tabs-wrap").append('<div class="panel-tool"><a href="javascript:;" class="panel-tool-max"></a><a href="javascript:;" class="layout-button-down"></a></div>');
+      $("#tabs .tabs-wrap .panel-tool-max").bind('click', function (e) {
+        if ($(this).hasClass('panel-tool-restore')) {
+          $(this).removeClass('panel-tool-restore');
+          $('#centerCC').layout('panel', 'south').panel('resize', { height: 160 });
+          $('#centerCC').layout('resize');
+        } else {
+          $(this).addClass('panel-tool-restore');
+          //$('#centerCC').layout().panel('south').resize({'height':500});
+          $('#centerCC').layout('panel', 'south').panel('resize', { height: $("#centerCC").css('height') });
+          $('#centerCC').layout('resize');
+        }
+      });
+      $("#tabs .tabs-wrap a[class*='layout-button']").bind('click', function (e) {
+        var display = $('#south').css('display');
+        if ($(this).hasClass('layout-button-down') || display != 'none') {
+          $(this).removeClass('layout-button-down');
+          $(this).addClass('layout-button-up');
+          $('#centerCC').layout('collapse', 'south');
+        } else {
+          $(this).removeClass('layout-button-up');
+          $(this).addClass('layout-button-down');
+          $('#centerCC').layout('expand', 'south');
+        }
+      });
+    }
+
+    function getTabContent() {
+      return '<div title="Terminal"  style="background-color: black;">' +
+        '<div id="container' + currentTabIndex + '" style="overflow-y: auto;height:160px;width: 100%;">' +
+        '<output></output>' +
+        '<div id="input-line' + currentTabIndex + '" class="input-line">' +
+        '<div class="prompt"></div>' +
+        '<div style="position: relative;">' +
+        '<input  class="cmdline"/><span class="placeholder"></span>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '</div> ';
+    }
+    function addTab() {
+      currentTabIndex++;
+      $('#tabs').tabs('add', {
+        title: 'terminal-' + currentTabIndex,
+        content: getTabContent(),
+        closable: true
+        // cache:false
+      });
+      initTerminal();
+    }
+    $.extend($.fn.panel.methods, {
+      showMask: function (jq, msg) {
+        return jq.each(function () {
+          var pal = $(this).panel('panel');
+          if (pal.css('position').toLowerCase() != 'absolute') {
+            pal.css('position', 'relative');
+          }
+          var borderSize = parseInt(pal.css('padding')) + 1;
+          var m = pal.children('div.panel-mask');
+          if (!m.length) {
+            m = $('<div class="panel-mask"></div>').appendTo(pal);
+          }
+          m.css({
+            background: '#fff',
+            left: borderSize,
+            top: (borderSize + pal.children('.panel-header')._outerHeight()),
+            right: borderSize,
+            bottom: borderSize
+          });
+          m.children('div.panel-mask-msg').remove();
+          var mm = $('<div class="panel-mask-msg"></div>').appendTo(m);
+          mm.html(msg).css({ position: 'absolute' }).css({
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginTop: -mm._outerHeight() / 2,
+            marginLeft: -mm._outerWidth() / 2
+          })
+        });
+      },
+      hideMask: function (jq) {
+        return jq.each(function () {
+          $(this).panel('panel').children('div.panel-mask').remove();
+        })
+      }
+    });
+    function cssRisize() {
+      $("div[id*='container']").each(function (e) {
+        $(this).css('height', parseInt($('#south').css('height').replace('px', '')) - 35);
+        $(this).scrollTop($(this)[0].scrollHeight + 32);
+        $(this).find("div[id*='input-line']").each(function (e) {
+          $(this).find('.cmdline').focusEnd();
+        });
+      });
+      // $("#sccCenter .textbox").css('height',parseInt($("#sccCenter").css('height').replace('px',''))-35);   
+
+    }
+    function resize() {
+      $('#centerCC').layout('panel', 'south').panel({
+        onResize: function (width, height) {
+          cssRisize();
+        }
+      });
+      // $("#sccCenter .textbox").css('height',parseInt($("#sccCenter").css('height').replace('px',''))-35);   
+    }
+    function initUIComps() {
+      initDD();
+      initCCInput();
+      initCC();
+      initContentView();
+    }
+    function selectRange(text) {
+      if (document.body.createTextRange) {
+        var range = document.body.createTextRange();
+        range.moveToElementText(text);
+        range.select();
       } else if (window.getSelection) {
-                var selection = window.getSelection();
-                var range = document.createRange();
-                range.selectNodeContents(text);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                              
-        } 
-  }
-  function initContentView(){
-          $("#vContent").bind("dblclick",function(e){
-                  //e.preventDefault();
-                  if(e.target.className=="pSize"){
-                    var text = $(e.target).next();
-                      if(text){
-                        selectRange(text[0]);
-                      }
-                    } 
-           });
-  }
-  var contentJson =[];
-  function initRedisConnect(profile,db){
-    var value =$("#databaseSelect").combobox("getValue");
-   if(value == profile+":db"+db){
-     return;
-   }
-   $("#databaseSelect").combobox("setValue",profile+":"+db);
-   var profileMap = redisCommand.RedisCommand().getRedis();
-   if(profileMap&&profileMap.has(profile)||profileMap.has(profile+":"+db)){
-     return;
-   }
-    $("#databaseSelect").combobox("setValue",profile+":db"+db);
-    var con = findProfileConfig(profile).connection;
-    if(con!=null && Array.isArray(con)){
-      const cluserOption={
-        clusterRetryStrategy:function(times) {
+        var selection = window.getSelection();
+        var range = document.createRange();
+        range.selectNodeContents(text);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+      }
+    }
+    function initContentView() {
+      $("#vContent").bind("dblclick", function (e) {
+        //e.preventDefault();
+        if (e.target.className == "pSize") {
+          var text = $(e.target).next();
+          if (text) {
+            selectRange(text[0]);
+          }
+        }
+      });
+    }
+    var contentJson = [];
+    function initRedisConnect(profile, db) {
+      var value = $("#databaseSelect").combobox("getValue");
+      if (value == profile + ":db" + db) {
+        return;
+      }
+      $("#databaseSelect").combobox("setValue", profile + ":" + db);
+      var profileMap = redisCommand.RedisCommand().getRedis();
+      if (profileMap && profileMap.has(profile) || profileMap.has(profile + ":" + db)) {
+        return;
+      }
+      $("#databaseSelect").combobox("setValue", profile + ":db" + db);
+      var con = findProfileConfig(profile).connection;
+      if (con != null && Array.isArray(con)) {
+        const cluserOption = {
+          clusterRetryStrategy: function (times) {
             var delay = Math.min(times * 50, 2000);
             return delay;
-          }  
-    };
-      const cluster=new Redis.Cluster(con,cluserOption);
-      var instance = {};
-      instance.redis = cluster;
-      instance.isCluster = true;
-      redisCommand.RedisCommand().init(profile,instance);
-    }else{
-    con.db=db;
-    const redis = new Redis(con);
-    var instance = {};
-    instance.redis = redis;
-    instance.isCluster = false;
-    redisCommand.RedisCommand().init(profile+":"+db,instance);
-    }   
-  }
-  function initTreeData(profile,isCluster){
-    var treeData = {};
-    treeData.id = profile;
-    treeData.text = profile;
-    treeData.type = "con";
-    var tempProfile = profile;
-    if(!isCluster){
-      tempProfile = profile+":0";
-    }
-    command.parseCmd(tempProfile,'config',['get','databases']).then(function (data){
-       var dbCount = parseInt(data.res[1]);
-       var children=[];
-       contentJson=[];
-       if(isCluster){
-         dbCount=1;
-       }
-      for(var i=0;i<dbCount;i++){
-        var child = {};
-        child.id=i;
-        child.text = "db"+i;
-        child.type = "db";
-        child.db = i;
-        children.push(child);
-       }
-       treeData.children=children;
-       contentJson.push(treeData);
-       initTreeDatabases(profile,isCluster);
-      });
-  }
-  function initTreeDatabases(profile,isCluster){
-    $('#tt').tree({
-    data:contentJson,
-    animate:true,
-    onBeforeLoad:function(node,param){
-      
-    },
-    formatter:function(node){
-                  var s = node.text;
-                  if(node.type=="db"){
-                   // console.log(node);
-                  }else if (node.childrenLength){
-                    s += ' <span style=\'color:blue\'>(' + node.childrenLength + ')</span>';
-                  }else if (node.children){
-                    s += ' <span style=\'color:blue\'>(' + node.children.length + ')</span>';
-                  }
-                  return s;
-    },
-    onLoadSuccess:function(node,data){
-      isShowTree=true;
-      $.messager.progress('close');
-    },
-    onLoadError:function(arg){
-      $.messager.progress('close');
-    },
-    onBeforeExpand:function(node){
-      if(node.type=="group"){  
-        if(node.children&&node.children.length>0){
-            return;
-        }else{
-          loadDbData(isCluster,profile,node.text+":*",node);
-        }
-        }
-    },
-    onContextMenu: function(e, node){
-        e.preventDefault();
-        if(node.db){
-          initRedisConnect(profile,node.db);
-        }  
-    // select the node
-    $('#tt').tree('select', node.target);
-    if(node.type=="group"){
-      $("#keysv").attr("value",isCluster+"="+profile);
-      $('#mm').menu('show', {
-			left: e.pageX,
-			top: e.pageY
-		});
-    }
-	},
-    onDblClick:function(node){
-      if(node.type=="db"){
-        initRedisConnect(profile,node.db);
-        loadDbData(isCluster,profile,"*",node);
-      }else if(node.type=="group"){
-        initRedisConnect(profile,node.db);
-          loadDbData(isCluster,profile,node.text+":*",node);
-        }else if(node.type=="key"){
-          initRedisConnect(profile,node.db);
-          loadKeyValue(isCluster,profile,node);
-        }
-      
-    }        
-   });
-  }
-  function syntaxHighlight(json) {
-    if (typeof json != 'string') {
-        json = JSON.stringify(json, undefined, 2);
-    }
-    json = json.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-    var str = json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function(match) {
-        var cls = 'number';
-        if (/^"/.test(match)) {
-            if (/:$/.test(match)) {
-                cls = 'key';
-            } else {
-                cls = 'string';
-            }
-        } else if (/true|false/.test(match)) {
-            cls = 'boolean';
-        } else if (/null/.test(match)) {
-            cls = 'null';
-        }
-        return '<span class="' + cls + '">' + match + '</span>';
-    });
-    return '<pre id="result">'+str+'</pre>';
-
-}
-  function loadKeyValue(isCluster,profile,node){
-    $.messager.progress({
-         title: 'info',
-         msg: 'loading......',
-         text: ''
-      });
-      if(!isCluster) {
-        profile=profile+":"+node.db;
+          }
+        };
+        const cluster = new Redis.Cluster(con, cluserOption);
+        var instance = {};
+        instance.redis = cluster;
+        instance.isCluster = true;
+        redisCommand.RedisCommand().init(profile, instance);
+      } else {
+        con.db = db;
+        const redis = new Redis(con);
+        var instance = {};
+        instance.redis = redis;
+        instance.isCluster = false;
+        redisCommand.RedisCommand().init(profile + ":" + db, instance);
       }
-      var arg=[];
+    }
+    function initTreeData(profile, isCluster) {
+      var treeData = {};
+      treeData.id = profile;
+      treeData.text = profile;
+      treeData.type = "con";
+      var tempProfile = profile;
+      if (!isCluster) {
+        tempProfile = profile + ":0";
+      }
+      command.parseCmd(tempProfile, 'config', ['get', 'databases']).then(function (data) {
+        var dbCount = parseInt(data.res[1]);
+        var children = [];
+        contentJson = [];
+        if (isCluster) {
+          dbCount = 1;
+        }
+        for (var i = 0; i < dbCount; i++) {
+          var child = {};
+          child.id = i;
+          child.text = "db" + i;
+          child.type = "db";
+          child.db = i;
+          children.push(child);
+        }
+        treeData.children = children;
+        contentJson.push(treeData);
+        initTreeDatabases(profile, isCluster);
+      });
+    }
+    function initTreeDatabases(profile, isCluster) {
+      $('#tt').tree({
+        data: contentJson,
+        animate: true,
+        onBeforeLoad: function (node, param) {
+
+        },
+        formatter: function (node) {
+          var s = node.text;
+          if (node.type == "db") {
+            // console.log(node);
+          } else if (node.childrenLength) {
+            s += ' <span style=\'color:blue\'>(' + node.childrenLength + ')</span>';
+          } else if (node.children) {
+            s += ' <span style=\'color:blue\'>(' + node.children.length + ')</span>';
+          }
+          return s;
+        },
+        onLoadSuccess: function (node, data) {
+          isShowTree = true;
+          $.messager.progress('close');
+        },
+        onLoadError: function (arg) {
+          $.messager.progress('close');
+        },
+        onBeforeExpand: function (node) {
+          if (node.type == "group") {
+            if (node.children && node.children.length > 0) {
+              return;
+            } else {
+              loadDbData(isCluster, profile, node.text + ":*", node);
+            }
+          }
+        },
+        onContextMenu: function (e, node) {
+          e.preventDefault();
+          if (node.db) {
+            initRedisConnect(profile, node.db);
+          }
+          // select the node
+          $('#tt').tree('select', node.target);
+          if (node.type == "group") {
+            $("#keysv").attr("value", isCluster + "=" + profile);
+            $('#groubMm').menu('show', {
+              left: e.pageX,
+              top: e.pageY
+            });
+          } else if (node.type == "key") {
+            $("#ttlKey").attr("value", isCluster + "=" + profile);
+            $("#delKey").attr("value", isCluster + "=" + profile);
+            $("#editKey").attr("value", isCluster + "=" + profile);
+            $('#keyMm').menu('show', {
+              left: e.pageX,
+              top: e.pageY
+            });
+          } else if (node.type == "db") {
+            $("#addKey").attr("value", isCluster + "=" + profile);
+            $('#dbMm').menu('show', {
+              left: e.pageX,
+              top: e.pageY
+            });
+          }
+        },
+        onDblClick: function (node) {
+          if (node.type == "db") {
+            initRedisConnect(profile, node.db);
+            loadDbData(isCluster, profile, "*", node);
+          } else if (node.type == "group") {
+            initRedisConnect(profile, node.db);
+            loadDbData(isCluster, profile, node.text + ":*", node);
+          } else if (node.type == "key") {
+            initRedisConnect(profile, node.db);
+            loadKeyValue(isCluster, profile, node);
+          }
+
+        }
+      });
+    }
+    function loadKeyValue(isCluster, profile, node) {
+      $.messager.progress({
+        title: 'info',
+        msg: 'loading......',
+        text: ''
+      });
+      if (!isCluster) {
+        profile = profile + ":" + node.db;
+      }
+      var arg = [];
       var key = node.text;
       arg.push(key);
-      command.parseCmd(profile,'type',arg).then(function (data){
-        if(data.res){
+      command.parseCmd(profile, 'type', arg).then(function (data) {
+        if (data.res) {
           var type = data.res;
-          if(type=="string"){
-            getStringV(profile,key,type);
-          }else if(type=="set"){
-            getSetV(profile,key,type);
-          }else if(type=="zset"){
-            getZSetV(profile,key,type);
-          }else if(type=="list"){
-            getListV(profile,key,type);
-          }else if(type=="hash"){
-            getHastV(profile,key,type);
-          }else if(type=="none"){
-            $("#vContent").html("the key:'"+key+"' of type is null! can not find the value");
+          if (type == "string") {
+            getStringV(profile, key, type);
+          } else if (type == "set") {
+            getSetV(profile, key, type);
+          } else if (type == "zset") {
+            getZSetV(profile, key, type);
+          } else if (type == "list") {
+            getListV(profile, key, type);
+          } else if (type == "hash") {
+            getHastV(profile, key, type);
+          } else if (type == "none") {
+            $("#vContent").html("the key:'" + key + "' of type is null! can not find the value");
             $.messager.progress('close');
           }
         }
       });
-     
-  }
-  function keysv(o){
-    var node = dbNode =  $('#tt').tree('getSelected');
-    if(node&&o){
-      var v =  $(o).attr("value");
-      var isCluster = v.split("=")[0];
-      var profile = v.split("=")[1];
-      var arg=[];
-      arg.push(node.text+":*");
-      arg.push(command.defautKeysSize);
-    if(!eval(isCluster)) {
-      profile=profile+":"+node.db;
-     }
-     $.messager.progress({
-         title: 'info',
-         msg: 'loading......',
-         text: ''
-      });
-    command.parseCmd(profile,'keysv',arg).then(function (data){
-      if(data.res){
-        vContentSet(data.res);
-        // if(data.res.length<=10000){
-        //   vContentSet(data.res);
-        //   $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>");
-        // }else{
-        //   $("#vContent").html("<p class=\"pSize\">size:"+data.res.length+"</<p>"+"<p>"+JSON.stringify(data.res, undefined, 2)+"</p>");
-        //   vContentSet(data);
-        // }
-        $.messager.progress('close');
-      }
-    });
-    }
-   
-    
-  }
-  function getHastV(profile,key,type){
-    var arg=[];
-    arg.push(key);
-    command.parseCmd(profile,'hgetall',arg).then(function (data){
-        if(data.res){
-          var dd={};
-          dd.key = key;
-          dd.type = type;
-          dd.value=data.res;
-          vContentSet(dd);
-        }
-        $.messager.progress('close');
-      })
-  }
-  function getListV(profile,key,type){
-    var arg=[];
-    arg.push(key);
-    arg.push(0);
-    arg.push(-1);
-    command.parseCmd(profile,'lrange',arg).then(function (data){
-        if(data.res){
-          var dd={};
-          dd.key = key;
-          dd.type = type;
-          dd.value=data.res;
-          vContentSet(dd);
-        }
-        $.messager.progress('close');
-      })
-  }
-  function getZSetV(profile,key,type){
-    var arg=[];
-    arg.push(key);
-    arg.push(0);
-    arg.push(-1);
-    arg.push("WITHSCORES");
-    command.parseCmd(profile,'zrange',arg).then(function (data){
-        if(data.res){
-          var dd={};
-          dd.key = key;
-          dd.type = type;
-          dd.value=data.res;
-          vContentSet(dd);
-        }
-        $.messager.progress('close');
-      })
-  }
-  function getSetV(profile,key,type){
-    var arg=[];
-    arg.push(key);
-    command.parseCmd(profile,'smembers',arg).then(function (data){
-        if(data.res){
-          var dd={};
-          dd.key = key;
-          dd.type = type;
-          dd.value=data.res;
-          vContentSet(dd);
-        }
-        $.messager.progress('close');
-      })
-  }
-  function getStringV(profile,key,type){
-    var arg=[];
-    arg.push(key);
-    command.parseCmd(profile,'get',arg).then(function (data){
-        if(data.res){
-          var dd={};
-          dd.key = key;
-          dd.type = type;
-          dd.value=data.res;
-          vContentSet(dd);
-        }
-        $.messager.progress('close');
-      })
-  }
-  function vContentSet(dd){
-    $('#vContent').jsonViewer(dd, {collapsed: false, withQuotes: true, withLinks: false});
-   // $("#vContent").html(syntaxHighlight(dd));
-  }
-  function loadDbData(isCluster,profile,pattern,selected,isSearch){
-    var db = $("#databaseSelect").combobox("getValue");
-    var nodeId = db.split(":")[1].replace("db","");
-    if(selected.db!=nodeId){
-      $('#ss').searchbox('setValue', '');
-    }
-   
-    $.messager.progress({
-         title: 'info',
-         msg: 'loading......',
-         text: ''
-      });
-    var arg=[];
-    arg.push(pattern);
-    arg.push(command.defautKeysSize);
-  //  if(!isCluster) {
-  //   profile=profile+":"+selected.db;
-  //  }
-  var profileMap = redisCommand.RedisCommand().getRedis();
-   if(profileMap&&!profileMap.has(profile)){
-    profile=profile+":"+selected.db;
-   }
-    command.parseCmd(profile,'keys',arg).then(function (data){
-      var arr = data.res;
-      var dbNode = selected;
-      if(selected.type=="db"){
-        var selectedChildren = $('#tt').tree('getChildren',selected.target);
-        for(var i=0;i<selectedChildren.length;i++){
-        $('#tt').tree('remove', selectedChildren[i].target);
-        }
-        var data = [];
-        if(isSearch&&pattern.replace(/\*/g,"")!=""){
-          data=buildNodeChildren(profile,arr,false);
-        }else{
-          data=bulidDbChildren(profile,arr,true);
-        }
-        $('#tt').tree('append', {
-	      parent: selected.target,
-	      data: data
-       });
-      $('#tt').tree('select',selected.target);
-      }else if(selected.type=="group"){
-        dbNode =  $('#tt').tree('getParent',selected.target);
-        var data = buildNodeChildren(profile,arr,false);
-        for(var i=0;i<data.length;i++){
-          var id = data[i].id;
-          var node = $('#tt').tree('find',id);
-          if(node&&id!=selected.id){
-            $('#tt').tree('remove',node.target);
-          }
-        }
-        $('#tt').tree('insert', {
-        before: selected.target,
-        data: data
-      }); 
-      $('#tt').tree('remove', selected.target);
-      }
-      command.parseCmd(profile,'dbsize',arg).then(function(data){
-        if (dbNode){
-          var length = arr.length;
-        	$('#tt').tree('update', {
-	      	target: dbNode.target,
-		      text: dbNode.text.replace(/<span.*?span>/,"")+' <span style=\'color:blue\'>(' + length+'/'+data.res + ')</span>'
-	});
-}
 
-      });
-      
-      $.messager.progress('close');
-  });
-}
-  function bulidDbChildren(profile,arr,isClose){
-    var db=0;
-    if(profile.indexOf(":")!=-1){
-      db = Number(profile.split(":")[1]);
     }
-    var children=[]
-    var map = new Map();
-      for(var i=0;i<arr.length;i++){
+    function ttlKey(o) {
+      var node = dbNode = $('#tt').tree('getSelected');
+      if (node && o) {
+        var v = $(o).attr("value");
+        var isCluster = v.split("=")[0];
+        var profile = v.split("=")[1];
+        var arg = [];
+        arg.push(node.text);
+        if (!eval(isCluster)) {
+          profile = profile + ":" + node.db;
+        }
+        command.parseCmd(profile, 'ttl', arg).then(function (data) {
+          if (data.res) {
+            $.messager.show({
+              title: "ttl:" + node.text, msg: data.res, showType: 'show', style: {
+                "height": "80px"
+              }
+            });
+          } else {
+            $.messager.alert('error', data.err, 'error');
+          }
+        });
+      }
+    }
+    function delKey(o) {
+      var node = dbNode = $('#tt').tree('getSelected');
+      if (node && o) {
+        $.messager.confirm('Confirm', 'Are you sure to delete key "' + node.text + '"?', function (r) {
+          if (r) {
+            var v = $(o).attr("value");
+            var isCluster = v.split("=")[0];
+            var profile = v.split("=")[1];
+            var arg = [];
+            arg.push(node.text);
+            if (!eval(isCluster)) {
+              profile = profile + ":" + node.db;
+            }
+            command.parseCmd(profile, 'del', arg).then(function (data) {
+              if (data.res) {
+                var parent = $('#tt').tree('getParent', node.target);
+                var dbNode = null;
+                if (parent.type == "group") {
+                  dbNode = $('#tt').tree('getParent', parent.target);
+                  if (parent.children && parent.children.length > 1) {
+                    $('#tt').tree('remove', node.target);
+                  } else {
+                    $('#tt').tree('remove', parent.target);
+                  }
+
+                } else if (parent.type == "db") {
+                  dbNode = parent;
+                  $('#tt').tree('remove', node.target);
+                }
+
+                command.parseCmd(profile, 'dbsize', arg).then(function (data) {
+                  if (dbNode) {
+                    $('#tt').tree('update', {
+                      target: dbNode.target,
+                      text: dbNode.text.replace(/<span.*?span>/, "") + ' <span style=\'color:blue\'>(0/' + data.res + ')</span>'
+                    });
+                  }
+                });
+              } else {
+                $.messager.alert('error', data.err, 'error');
+              }
+            });
+          }
+        });
+      }
+
+    }
+    function editKey(o) {
+      var node = dbNode = $('#tt').tree('getSelected');
+      if (node && o) {
+        var v = $(o).attr("value");
+        var isCluster = v.split("=")[0];
+        var profile = v.split("=")[1];
+        var arg = [];
+        arg.push(node.text);
+        if (!eval(isCluster)) {
+          profile = profile + ":" + node.db;
+        }
+      }
+    }
+    function keysv(o) {
+      var node = dbNode = $('#tt').tree('getSelected');
+      if (node && o) {
+        var v = $(o).attr("value");
+        var isCluster = v.split("=")[0];
+        var profile = v.split("=")[1];
+        var arg = [];
+        arg.push(node.text + ":*");
+        arg.push(command.defautKeysSize);
+        if (!eval(isCluster)) {
+          profile = profile + ":" + node.db;
+        }
+        $.messager.progress({
+          title: 'info',
+          msg: 'loading......',
+          text: ''
+        });
+        command.parseCmd(profile, 'keysv', arg).then(function (data) {
+          if (data.res) {
+            vContentSet(data.res);
+            $.messager.progress('close');
+          }
+        });
+      }
+
+
+    }
+    function getHastV(profile, key, type) {
+      var arg = [];
+      arg.push(key);
+      command.parseCmd(profile, 'hgetall', arg).then(function (data) {
+        if (data.res) {
+          var dd = {};
+          dd.key = key;
+          dd.type = type;
+          dd.value = data.res;
+          vContentSet(dd);
+        }
+        $.messager.progress('close');
+      })
+    }
+    function getListV(profile, key, type) {
+      var arg = [];
+      arg.push(key);
+      arg.push(0);
+      arg.push(-1);
+      command.parseCmd(profile, 'lrange', arg).then(function (data) {
+        if (data.res) {
+          var dd = {};
+          dd.key = key;
+          dd.type = type;
+          dd.value = data.res;
+          vContentSet(dd);
+        }
+        $.messager.progress('close');
+      })
+    }
+    function getZSetV(profile, key, type) {
+      var arg = [];
+      arg.push(key);
+      arg.push(0);
+      arg.push(-1);
+      arg.push("WITHSCORES");
+      command.parseCmd(profile, 'zrange', arg).then(function (data) {
+        if (data.res) {
+          var dd = {};
+          dd.key = key;
+          dd.type = type;
+          dd.value = data.res;
+          vContentSet(dd);
+        }
+        $.messager.progress('close');
+      })
+    }
+    function getSetV(profile, key, type) {
+      var arg = [];
+      arg.push(key);
+      command.parseCmd(profile, 'smembers', arg).then(function (data) {
+        if (data.res) {
+          var dd = {};
+          dd.key = key;
+          dd.type = type;
+          dd.value = data.res;
+          vContentSet(dd);
+        }
+        $.messager.progress('close');
+      })
+    }
+    function getStringV(profile, key, type) {
+      var arg = [];
+      arg.push(key);
+      command.parseCmd(profile, 'get', arg).then(function (data) {
+        if (data.res) {
+          var dd = {};
+          dd.key = key;
+          dd.type = type;
+          dd.value = data.res;
+          vContentSet(dd);
+        }
+        $.messager.progress('close');
+      })
+    }
+    function vContentSet(dd) {
+      $('#vContent').jsonViewer(dd, { collapsed: false, withQuotes: true, withLinks: false });
+    }
+    function loadDbData(isCluster, profile, pattern, selected, isSearch) {
+      var db = $("#databaseSelect").combobox("getValue");
+      var nodeId = db.split(":")[1].replace("db", "");
+      if (selected.db != nodeId) {
+        $('#ss').searchbox('setValue', '');
+      }
+
+      $.messager.progress({
+        title: 'info',
+        msg: 'loading......',
+        text: ''
+      });
+      var arg = [];
+      arg.push(pattern);
+      arg.push(command.defautKeysSize);
+      //  if(!isCluster) {
+      //   profile=profile+":"+selected.db;
+      //  }
+      var profileMap = redisCommand.RedisCommand().getRedis();
+      if (profileMap && !profileMap.has(profile)) {
+        profile = profile + ":" + selected.db;
+      }
+      command.parseCmd(profile, 'keys', arg).then(function (data) {
+        var arr = data.res;
+        var dbNode = selected;
+        if (selected.type == "db") {
+          var selectedChildren = $('#tt').tree('getChildren', selected.target);
+          for (var i = 0; i < selectedChildren.length; i++) {
+            $('#tt').tree('remove', selectedChildren[i].target);
+          }
+          var data = [];
+          if (isSearch && pattern.replace(/\*/g, "") != "") {
+            data = buildNodeChildren(profile, arr, false);
+          } else {
+            data = bulidDbChildren(profile, arr, true);
+          }
+          $('#tt').tree('append', {
+            parent: selected.target,
+            data: data
+          });
+          $('#tt').tree('select', selected.target);
+        } else if (selected.type == "group") {
+          dbNode = $('#tt').tree('getParent', selected.target);
+          var data = buildNodeChildren(profile, arr, false);
+          for (var i = 0; i < data.length; i++) {
+            var id = data[i].id;
+            var node = $('#tt').tree('find', id);
+            if (node && id != selected.id) {
+              $('#tt').tree('remove', node.target);
+            }
+          }
+          $('#tt').tree('insert', {
+            before: selected.target,
+            data: data
+          });
+          $('#tt').tree('remove', selected.target);
+        }
+        command.parseCmd(profile, 'dbsize', arg).then(function (data) {
+          if (dbNode) {
+            var length = arr.length;
+            $('#tt').tree('update', {
+              target: dbNode.target,
+              text: dbNode.text.replace(/<span.*?span>/, "") + ' <span style=\'color:blue\'>(' + length + '/' + data.res + ')</span>'
+            });
+          }
+
+        });
+
+        $.messager.progress('close');
+      });
+    }
+    function bulidDbChildren(profile, arr, isClose) {
+      var db = 0;
+      if (profile.indexOf(":") != -1) {
+        db = Number(profile.split(":")[1]);
+      }
+      var children = []
+      var map = new Map();
+      for (var i = 0; i < arr.length; i++) {
         var key = {};
-        if(arr[i].indexOf(":")==-1){
+        if (arr[i].indexOf(":") == -1) {
           key.id = arr[i];
           key.text = arr[i];
           key.type = "key";
           key.db = db;
           children.push(key);
-        }else{
-          var group = arr[i].substr(0,arr[i].indexOf(":"));
-          if(map.get(group)!=null){
+        } else {
+          var group = arr[i].substr(0, arr[i].indexOf(":"));
+          if (map.get(group) != null) {
             key = children[map.get(group)];
-            key.childrenLength = key.childrenLength+1;
-          }else{
+            key.childrenLength = key.childrenLength + 1;
+          } else {
             key.id = group;
             key.text = group;
             key.type = "group";
             key.db = db;
             key.state = "closed";
             key.childrenLength = 1;
-            if(isClose){
-              
+            if (isClose) {
+
             }
             children.push(key);
-            map.set(group,children.length-1);
+            map.set(group, children.length - 1);
           }
         }
       }
       return children;
-  }
-  function buildNodeChildren(profile,arr,isClose){
-    var db=0;
-    if(profile.indexOf(":")!=-1){
-      db = Number(profile.split(":")[1]);
     }
-    var children=[]
-    var map = new Map();
-      for(var i=0;i<arr.length;i++){
+    function buildNodeChildren(profile, arr, isClose) {
+      var db = 0;
+      if (profile.indexOf(":") != -1) {
+        db = Number(profile.split(":")[1]);
+      }
+      var children = []
+      var map = new Map();
+      for (var i = 0; i < arr.length; i++) {
         var key = {};
-        if(arr[i].indexOf(":")==-1){
+        if (arr[i].indexOf(":") == -1) {
           key.id = arr[i];
           key.text = arr[i];
           key.type = "key";
           key.db = db;
           children.push(key);
-        }else{
-          var group = arr[i].substr(0,arr[i].indexOf(":"));
-          if(map.get(group)!=null){
+        } else {
+          var group = arr[i].substr(0, arr[i].indexOf(":"));
+          if (map.get(group) != null) {
             key = children[map.get(group)];
-            var subKey={};
+            var subKey = {};
             subKey.id = arr[i];
             subKey.text = arr[i];
             subKey.type = "key";
             subKey.db = db;
             key.children.push(subKey);
-          }else{
+          } else {
             key.id = group;
             key.text = group;
             key.type = "group";
             key.db = db;
-            if(isClose){
+            if (isClose) {
               key.state = "closed";
-            }else{
+            } else {
               key.state = "open";
             }
             key.db = db;
             var subChildren = [];
-            var subKey={};
+            var subKey = {};
             subKey.id = arr[i];
             subKey.text = arr[i];
             subKey.db = db;
             subKey.type = "key";
             subChildren.push(subKey);
-            key.children=subChildren;
+            key.children = subChildren;
             children.push(key);
-            map.set(group,children.length-1);
+            map.set(group, children.length - 1);
           }
         }
-          
-       
-        
+
+
+
       }
       return children;
-  }
-  function initTree(profile){
-    $.messager.progress({
-      title: 'info',
-      msg: 'loading......',
-      text: ''
-      });
-      if(isShowTree){
-        var root = $('#tt').tree('getRoot');
-       $('#tt').tree("remove",root.target);
-       isShowTree=false;
     }
-    
-    var con = findProfileConfig(profile).connection;
-    if(!Array.isArray(con)){
-      testTreeSingle(profile,con.host+":"+con.port,con.password);
-    }else{
-      testTreeCluster(con,profile);
-    } 
-  }
-  function initCCInput(){
-    $('.layout-split-west .panel-title').css("height","25px");
-    $('.layout-split-west .panel-title').prepend('<input id="databaseSelect"  style="width:190px;height:25px"></input>');
-  }
-  function initDD(){
-    $('#easyui-panel-connection').panel({
-    height:150,
-    title:'  ',
-    tools:[{
-            iconCls:'icon-add',
-            handler:function(){
-              ddHandler(false,'no');
-            }
-					}]
-    });
-  }
-  function ddHandler(isEdit,profile){
-    $('#dd').dialog({
-                bgiframe: true,
-                title: 'connect',
-                width: 400,
-                height: 250,
-                closed: false,
-                cache: false,
-                modal: true,
-                href:"edit.html",               
-                onLoad:function(){
-                  if(isEdit){
-                    var conConfig = findProfileConfig(profile).connection;
-                    if(!Array.isArray(conConfig)){
-                      $('#alias').textbox('setValue',profile);
-                      $('#aliasHidden').val(profile);
-                      $('#hosts').textbox('setValue',conConfig.host+":"+conConfig.port);
-                      $('#password').textbox('setValue',conConfig.password);
-                    }else{
-                      $('#alias').textbox('setValue',profile);
-                      $('#aliasHidden').val(profile);
-                      var hosts="";
-                      for(var i=0;i<conConfig.length;i++){
-                        hosts = hosts+conConfig[i].host+":"+conConfig[i].port+","
-                      }
-                      hosts = hosts.substr(0,hosts.length-1);
-                      $('#hosts').textbox('setValue',hosts);
-                      
-                      $('#password').textbox('setValue',conConfig[0].password);
-                    }
-       
-                  }  
-                },
+    function initTree(profile) {
+      $.messager.progress({
+        title: 'info',
+        msg: 'loading......',
+        text: ''
+      });
+      if (isShowTree) {
+        var root = $('#tt').tree('getRoot');
+        $('#tt').tree("remove", root.target);
+        isShowTree = false;
+      }
 
-                buttons: [{
-                      text:'Test',
-                      handler:function(){
-                        test();
-                      }
-                    },{
-                      text:'Save',
-                      iconCls:'icon-save',
-                      handler:function(){
-                        if(isEdit){
-                          save(true);
-                        }else{
-                          save(false);
-                        }
-                        
-                      }
-                    }]
-            });
-          
-  }
-  function initCC(){
-   
-    var config = store.Store().get("config");
-    if(config!=null && config.length>0&&content.length==0){
-      for(var i=0;i<config.length;i++){
+      var con = findProfileConfig(profile).connection;
+      if (!Array.isArray(con)) {
+        testTreeSingle(profile, con.host + ":" + con.port, con.password);
+      } else {
+        testTreeCluster(con, profile);
+      }
+    }
+    function initCCInput() {
+      $('.layout-split-west .panel-title').css("height", "25px");
+      $('.layout-split-west .panel-title').prepend('<input id="databaseSelect"  style="width:190px;height:25px"></input>');
+    }
+    function initDD() {
+      $('#easyui-panel-connection').panel({
+        height: 150,
+        title: '  ',
+        tools: [{
+          iconCls: 'icon-add',
+          handler: function () {
+            ddHandler(false, 'no');
+          }
+        }]
+      });
+    }
+    function ddHandler(isEdit, profile) {
+      $('#dd').dialog({
+        bgiframe: true,
+        title: 'connect',
+        width: 400,
+        height: 250,
+        closed: false,
+        cache: false,
+        modal: true,
+        href: "edit.html",
+        onLoad: function () {
+          if (isEdit) {
+            var conConfig = findProfileConfig(profile).connection;
+            if (!Array.isArray(conConfig)) {
+              $('#alias').textbox('setValue', profile);
+              $('#aliasHidden').val(profile);
+              $('#hosts').textbox('setValue', conConfig.host + ":" + conConfig.port);
+              $('#password').textbox('setValue', conConfig.password);
+            } else {
+              $('#alias').textbox('setValue', profile);
+              $('#aliasHidden').val(profile);
+              var hosts = "";
+              for (var i = 0; i < conConfig.length; i++) {
+                hosts = hosts + conConfig[i].host + ":" + conConfig[i].port + ","
+              }
+              hosts = hosts.substr(0, hosts.length - 1);
+              $('#hosts').textbox('setValue', hosts);
+
+              $('#password').textbox('setValue', conConfig[0].password);
+            }
+
+          }
+        },
+
+        buttons: [{
+          text: 'Test',
+          handler: function () {
+            test();
+          }
+        }, {
+          text: 'Save',
+          iconCls: 'icon-save',
+          handler: function () {
+            if (isEdit) {
+              save(true);
+            } else {
+              save(false);
+            }
+
+          }
+        }]
+      });
+
+    }
+    function initCC() {
+
+      var config = store.Store().get("config");
+      if (config != null && config.length > 0 && content.length == 0) {
+        for (var i = 0; i < config.length; i++) {
           var con = {};
           con.profile = config[i].profile;
           content.push(con);
         }
-    }
-        
-    $("#databaseSelect").combobox({
+      }
+
+      $("#databaseSelect").combobox({
         valueField: 'profile',
         textField: 'profile',
-        editable:false,
+        editable: false,
         data: content.sort(function (x, y) {
-            if (x.profile < y.profile) {
-                return -1;
-            }
-            if (x.profile > y.profile) {
-                return 1;
-            }
-            return 0;
-            }),
+          if (x.profile < y.profile) {
+            return -1;
+          }
+          if (x.profile > y.profile) {
+            return 1;
+          }
+          return 0;
+        }),
         panelHeight: '180px',
         formatter: formatItem,
-        onSelect:function(row){
+        onSelect: function (row) {
           initTree(row.profile);
         }
-    });
-    setCCDefautValue();
-    $('.combobox-item a').each(function(row){
-      var id =this.id;
-      if(id.indexOf('edit')==-1){
-        $('#'+this.id).linkbutton({
-          iconCls: 'icon-remove',
-          iconAlign: 'right'
-        });
-        $('#'+this.id).bind('click', function(e){
-          e.stopPropagation()
-          var remove = this;
-          var ccValue = $("#databaseSelect").combobox('getValue');
-          
-          $.messager.confirm('message', 'Do you sure to delete '+this.id+'?', function(r){
-            if (r){
-              $(remove).parent().parent().remove();
-              if(ccValue == remove.id){
-                setCCDefautValue();
-              }
-              removeProfile(remove.id);
-            }
-          }); 
-       });
-      }else{
-        $('#'+this.id).linkbutton({
-          iconCls: 'icon-edit',
-          iconAlign: 'right'
+      });
+      setCCDefautValue();
+      $('.combobox-item a').each(function (row) {
+        var id = this.id;
+        if (id.indexOf('edit') == -1) {
+          $('#' + this.id).linkbutton({
+            iconCls: 'icon-remove',
+            iconAlign: 'right'
           });
-        $('#'+this.id).bind('click', function(e){
-          e.stopPropagation()
-          ddHandler(true,this.id.replace("edit",""));
-        });
-      }
-    })
-    $('.l-btn').css('border','0px');
-    $('.combobox-item').css('position','relative');
-   
-    
-  }
-  function findProfileConfig(profile){
-    var config = store.Store().get("config");
-    for(var i=0;i<config.length;i++){
-      var p = config[i];
-      if(p.profile == profile){
-       return p;
-      }
-    }
-  }
-  function removeProfile(profile){
-    var config = store.Store().get("config");
-    var newConfig = [];
-    for(var i=0;i<config.length;i++){
-      var p = config[i];
-      if(p.profile != profile){
-        newConfig.push(p);
-      }
-    }
-    store.Store().set("config",newConfig);
+          $('#' + this.id).bind('click', function (e) {
+            e.stopPropagation()
+            var remove = this;
+            var ccValue = $("#databaseSelect").combobox('getValue');
 
-    var newContent = [];
-    for(var j=0;j<content.length;j++){
-      if(content[j].profile!=profile){
-        newContent.push(content[j]);
-      }
+            $.messager.confirm('message', 'Do you sure to delete ' + this.id + '?', function (r) {
+              if (r) {
+                $(remove).parent().parent().remove();
+                if (ccValue == remove.id) {
+                  setCCDefautValue();
+                }
+                removeProfile(remove.id);
+              }
+            });
+          });
+        } else {
+          $('#' + this.id).linkbutton({
+            iconCls: 'icon-edit',
+            iconAlign: 'right'
+          });
+          $('#' + this.id).bind('click', function (e) {
+            e.stopPropagation()
+            ddHandler(true, this.id.replace("edit", ""));
+          });
+        }
+      })
+      $('.l-btn').css('border', '0px');
+      $('.combobox-item').css('position', 'relative');
+
+
     }
-    content = newContent;
-  }
-  function setCCDefautValue(){
-    if(content.length>0){
-      $("#databaseSelect").combobox('setValue','select a connection');
-    }else{
-      $("#databaseSelect").combobox('setValue','config connection first!');
-    }
-  }
-  function checkParams(){
-    var alias = $('#alias').textbox('getValue').trim();
-    var aliasHidden = $('#aliasHidden').val().trim();
-    if(alias==''){
-      $.messager.alert('info','alias should not be empty!');
-      return false;
-    }else if(aliasHidden ==''){
-      for(var i=0;i<content.length;i++){
-        if(content[i].profile==alias){
-          $.messager.alert('info',alias+' is existed');
-          return false;
+    function findProfileConfig(profile) {
+      var config = store.Store().get("config");
+      for (var i = 0; i < config.length; i++) {
+        var p = config[i];
+        if (p.profile == profile) {
+          return p;
         }
       }
     }
-    var hosts = $('#hosts').textbox('getValue').trim();
-    if(hosts==''){
-      $.messager.alert('info','hosts should not be empty!');
-      return false;
-    } else{
-      var hostPorts = hosts.split(',');
-      for(var i=0;i<hostPorts.length;i++){
-        if(hostPorts[i].indexOf(':')==-1||hostPorts[i].split(":")[1].match(/^\d+$/)==null){
-          $.messager.alert('info','hosts is illegal! ex:host:port,host2:port2 and so on');
-          return false;
+    function removeProfile(profile) {
+      var config = store.Store().get("config");
+      var newConfig = [];
+      for (var i = 0; i < config.length; i++) {
+        var p = config[i];
+        if (p.profile != profile) {
+          newConfig.push(p);
         }
       }
-    }
-  return true;  
-  }
-  function test(){
-    var isPass = checkParams();
-    if(!isPass){
-      return;
-    }
-    $('#dd').dialog('showMask', 'Checking...');
-    var alias = $('#alias').textbox('getValue').trim();
-    var hosts = $('#hosts').textbox('getValue').trim();
-    var password = $('#password').textbox('getValue').trim();
-  if(hosts.split(',').length==1){
-    testSingle(hosts,password);
-  }else{
-    testCluster(hosts.split(','),password);
-  }
-}   
-  function testCluster(hosts,password){
-    const cluserOption={
-        clusterRetryStrategy:function(times) {
-            return "no";
-          }  
-    };
-    var connection = [];
-    for(var i=0;i<hosts.length;i++){
-      var con = {};
-      con.password = password;
-      con.host = hosts[i].split(':')[0];
-      con.port = hosts[i].split(':')[1];
-      connection.push(con);
-    }
-    const cluster=new Redis.Cluster(connection,cluserOption);
-    cluster.get("custom:key:test", function (err, res) {
-     if(err ==null){
-      cluster.disconnect();
-      $.messager.alert('info','successfully!');
-     }else{
-      $.messager.alert('error',err,'error');
-     }
-     $('#dd').dialog('hideMask');
-  });
-  }
-  function testSingle(hosts,password){
-    var con = {
-        port: hosts.split(":")[1], // Redis port
-        host: hosts.split(":")[0], // Redis host
-        password: password,
-        db: 0,
-        retryStrategy: function(times) {
-        return 'no';
+      store.Store().set("config", newConfig);
+
+      var newContent = [];
+      for (var j = 0; j < content.length; j++) {
+        if (content[j].profile != profile) {
+          newContent.push(content[j]);
         }
-      }   
-    var redis = new Redis(con);
-    redis.get("custom:key:test", function (err, res) {
-     if(err ==null){
-      redis.disconnect();
-      $.messager.alert('info','successfully!');
-     }else{
-      $.messager.alert('error',err,'error');
-     }
-     $('#dd').dialog('hideMask');
-  });
-  }   
-  function testTreeSingle(profile,hosts,password){
-    var con = {
-        port: hosts.split(":")[1], // Redis port
-        host: hosts.split(":")[0], // Redis host
-        password: password,
-        db: 0,
-        retryStrategy: function(times) {
-        return 'no';
-        }
-      }   
-    var redis = new Redis(con);
-    redis.get("custom:key:test", function (err, res) {
-     if(err ==null){
-      redis.disconnect();
-      initRedisConnect(profile,0)
-      initTreeData(profile,false);
-     }else{
-      $.messager.alert('error',err,'error');
-      $.messager.progress('close');
-     }
-  });
-  } 
-  function testTreeCluster(con,profile){
-    const cluserOption={
-        clusterRetryStrategy:function(times) {
-            return "no";
-          }  
-    };
-    
-    const cluster=new Redis.Cluster(con,cluserOption);
-    cluster.get("custom:key:test", function (err, res) {
-     if(err ==null){
-      cluster.disconnect();
-      initRedisConnect(profile,0)
-      initTreeData(profile,true);
-     }else{
-      $.messager.alert('error',err,'error');
-      $.messager.progress('close');
-     }
-  });
-  }
-  function save(isEdit){
-    var isPass = checkParams();
-    if(!isPass){
-      return;
-    }
-    var alias = $('#alias').textbox('getValue').trim();
-    var aliasHidden = $('#aliasHidden').val().trim();
-    var hosts = $('#hosts').textbox('getValue').trim();
-    var password = $('#password').textbox('getValue').trim();
-    var config = store.Store().get("config");
-    if(config == null){
-      config = [];
-    }
-    if(isEdit){
-      removeProfile(aliasHidden);
-      config = store.Store().get("config");
-    }
-  if(hosts.split(',').length==1){
-    saveSingle(alias,hosts,password,config);
-   }else{
-    saveCluster(alias,hosts.split(','),password,config);
-   }
-   $('#dd').dialog('close');
-    content=[];
-    initCC();
-  }
-  function saveSingle(alias,hosts,password,config){
-    var con=  {"profile":alias,"connection":{
-    port: hosts.split(':')[1], // Redis port
-    host: hosts.split(':')[0], // Redis host
-    password: password,
-    db: 0,
-    retryStrategy: function(times) {
-      var delay = Math.min(times * 50, 2000);
-      return delay;
       }
-     }
+      content = newContent;
     }
-    config.push(con);
-    //console.log(config);
-    //store.Store().del("config");
-    store.Store().set("config",config);
-  }
-  function saveCluster(alias,hosts,password,config){
-    var connection = [];
-    for(var i=0;i<hosts.length;i++){
-      var con = {};
-      con.password = password;
-      con.host = hosts[i].split(':')[0];
-      con.port = hosts[i].split(':')[1];
-      connection.push(con);
+    function setCCDefautValue() {
+      if (content.length > 0) {
+        $("#databaseSelect").combobox('setValue', 'select a connection');
+      } else {
+        $("#databaseSelect").combobox('setValue', 'config connection first!');
+      }
     }
-  var cluster =  {"profile":alias,"connection":connection};
-  config.push(cluster);
-  store.Store().set("config",config);
-  }
-  function formatItem(row){
-			var s = '<span style="font-weight:bold">' + row.profile + '</span><div style="text-align: right;display:inline;float:right;"><a href="#" id='+row.profile+'edit></a><a href="#" id='+row.profile+'></a></div>'
-			return s;
-	}
-  function doSearch(value){
-      
-      var db = $("#databaseSelect").combobox("getValue");
-      if(db==null||db==""||db.indexOf(":")==-1){
-        $.messager.alert('info','please select a connection');
+    function checkParams() {
+      var alias = $('#alias').textbox('getValue').trim();
+      var aliasHidden = $('#aliasHidden').val().trim();
+      if (alias == '') {
+        $.messager.alert('info', 'alias should not be empty!');
+        return false;
+      } else if (aliasHidden == '') {
+        for (var i = 0; i < content.length; i++) {
+          if (content[i].profile == alias) {
+            $.messager.alert('info', alias + ' is existed');
+            return false;
+          }
+        }
+      }
+      var hosts = $('#hosts').textbox('getValue').trim();
+      if (hosts == '') {
+        $.messager.alert('info', 'hosts should not be empty!');
+        return false;
+      } else {
+        var hostPorts = hosts.split(',');
+        for (var i = 0; i < hostPorts.length; i++) {
+          if (hostPorts[i].indexOf(':') == -1 || hostPorts[i].split(":")[1].match(/^\d+$/) == null) {
+            $.messager.alert('info', 'hosts is illegal! ex:host:port,host2:port2 and so on');
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+    function test() {
+      var isPass = checkParams();
+      if (!isPass) {
         return;
       }
-      var nodeId = db.split(":")[1].replace("db","");
-      loadDbData(false,db.split(":")[0],value,$('#tt').tree('find', nodeId),true);
-		}
-</script>      
-  </head>
-  <body>
-    <div id="cc" class="easyui-layout" style="width:100%;height:100%;">
-      <div id="easyui-panel-connection" data-options="region:'west',title:'connections',split:true,minWidth:250,maxWidth:400" style="width:250px;">
-        <input id="ss" class="easyui-searchbox" data-options="prompt:'Please Input Key,e.g:*key*',searcher:doSearch" style="width:100%"></input>
-        <div  class="easyui-panel" style="padding:5px;overflow-y:auto;width: 100%;">
-          <ul id="tt"></ul>
-        </div>
-      
+      $('#dd').dialog('showMask', 'Checking...');
+      var alias = $('#alias').textbox('getValue').trim();
+      var hosts = $('#hosts').textbox('getValue').trim();
+      var password = $('#password').textbox('getValue').trim();
+      if (hosts.split(',').length == 1) {
+        testSingle(hosts, password);
+      } else {
+        testCluster(hosts.split(','), password);
+      }
+    }
+    function testCluster(hosts, password) {
+      const cluserOption = {
+        clusterRetryStrategy: function (times) {
+          return "no";
+        }
+      };
+      var connection = [];
+      for (var i = 0; i < hosts.length; i++) {
+        var con = {};
+        con.password = password;
+        con.host = hosts[i].split(':')[0];
+        con.port = hosts[i].split(':')[1];
+        connection.push(con);
+      }
+      const cluster = new Redis.Cluster(connection, cluserOption);
+      cluster.get("custom:key:test", function (err, res) {
+        if (err == null) {
+          cluster.disconnect();
+          $.messager.alert('info', 'successfully!');
+        } else {
+          $.messager.alert('error', err, 'error');
+        }
+        $('#dd').dialog('hideMask');
+      });
+    }
+    function testSingle(hosts, password) {
+      var con = {
+        port: hosts.split(":")[1], // Redis port
+        host: hosts.split(":")[0], // Redis host
+        password: password,
+        db: 0,
+        retryStrategy: function (times) {
+          return 'no';
+        }
+      }
+      var redis = new Redis(con);
+      redis.get("custom:key:test", function (err, res) {
+        if (err == null) {
+          redis.disconnect();
+          $.messager.alert('info', 'successfully!');
+        } else {
+          $.messager.alert('error', err, 'error');
+        }
+        $('#dd').dialog('hideMask');
+      });
+    }
+    function testTreeSingle(profile, hosts, password) {
+      var con = {
+        port: hosts.split(":")[1], // Redis port
+        host: hosts.split(":")[0], // Redis host
+        password: password,
+        db: 0,
+        retryStrategy: function (times) {
+          return 'no';
+        }
+      }
+      var redis = new Redis(con);
+      redis.get("custom:key:test", function (err, res) {
+        if (err == null) {
+          redis.disconnect();
+          initRedisConnect(profile, 0)
+          initTreeData(profile, false);
+        } else {
+          $.messager.alert('error', err, 'error');
+          $.messager.progress('close');
+        }
+      });
+    }
+    function testTreeCluster(con, profile) {
+      const cluserOption = {
+        clusterRetryStrategy: function (times) {
+          return "no";
+        }
+      };
+
+      const cluster = new Redis.Cluster(con, cluserOption);
+      cluster.get("custom:key:test", function (err, res) {
+        if (err == null) {
+          cluster.disconnect();
+          initRedisConnect(profile, 0)
+          initTreeData(profile, true);
+        } else {
+          $.messager.alert('error', err, 'error');
+          $.messager.progress('close');
+        }
+      });
+    }
+    function save(isEdit) {
+      var isPass = checkParams();
+      if (!isPass) {
+        return;
+      }
+      var alias = $('#alias').textbox('getValue').trim();
+      var aliasHidden = $('#aliasHidden').val().trim();
+      var hosts = $('#hosts').textbox('getValue').trim();
+      var password = $('#password').textbox('getValue').trim();
+      var config = store.Store().get("config");
+      if (config == null) {
+        config = [];
+      }
+      if (isEdit) {
+        removeProfile(aliasHidden);
+        config = store.Store().get("config");
+      }
+      if (hosts.split(',').length == 1) {
+        saveSingle(alias, hosts, password, config);
+      } else {
+        saveCluster(alias, hosts.split(','), password, config);
+      }
+      $('#dd').dialog('close');
+      content = [];
+      initCC();
+    }
+    function saveSingle(alias, hosts, password, config) {
+      var con = {
+        "profile": alias, "connection": {
+          port: hosts.split(':')[1], // Redis port
+          host: hosts.split(':')[0], // Redis host
+          password: password,
+          db: 0,
+          retryStrategy: function (times) {
+            var delay = Math.min(times * 50, 2000);
+            return delay;
+          }
+        }
+      }
+      config.push(con);
+      //console.log(config);
+      //store.Store().del("config");
+      store.Store().set("config", config);
+    }
+    function saveCluster(alias, hosts, password, config) {
+      var connection = [];
+      for (var i = 0; i < hosts.length; i++) {
+        var con = {};
+        con.password = password;
+        con.host = hosts[i].split(':')[0];
+        con.port = hosts[i].split(':')[1];
+        connection.push(con);
+      }
+      var cluster = { "profile": alias, "connection": connection };
+      config.push(cluster);
+      store.Store().set("config", config);
+    }
+    function formatItem(row) {
+      var s = '<span style="font-weight:bold">' + row.profile + '</span><div style="text-align: right;display:inline;float:right;"><a href="#" id=' + row.profile + 'edit></a><a href="#" id=' + row.profile + '></a></div>'
+      return s;
+    }
+    function doSearch(value) {
+
+      var db = $("#databaseSelect").combobox("getValue");
+      if (db == null || db == "" || db.indexOf(":") == -1) {
+        $.messager.alert('info', 'please select a connection');
+        return;
+      }
+      var nodeId = db.split(":")[1].replace("db", "");
+      loadDbData(false, db.split(":")[0], value, $('#tt').tree('find', nodeId), true);
+    }
+  </script>
+</head>
+
+<body>
+  <div id="cc" class="easyui-layout" style="width:100%;height:100%;">
+    <div id="easyui-panel-connection"
+      data-options="region:'west',title:'connections',split:true,minWidth:250,maxWidth:400" style="width:250px;">
+      <input id="ss" class="easyui-searchbox" data-options="prompt:'Please Input Key,e.g:*key*',searcher:doSearch"
+        style="width:100%"></input>
+      <div class="easyui-panel" style="padding:5px;overflow-y:auto;width: 100%;">
+        <ul id="tt"></ul>
       </div>
-      <div data-options="region:'center',split:true,collapsible:true" >
-        <div id="centerCC" class="easyui-layout" data-options="fit:true">
-          <div id="sccCenter" data-options="region:'center',border:false">
-            <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
-              <div id="vContent" class="vContent">
-                1.The UI only supports simple queries.<br>
-                2.UI grouping and key are not complete, you can use the search key.<br>
-                3.The Terminal operation is highly recommended for more commands and data presentation.<br>
-                4.Terminal type 'help' query to use.<br>
-                5.Keys,keysc, and keysv commands are implemented with scan, and keysv implements queries with pipeline, as well as in cluster<br>
-              </div>
-              <!-- <div title="About" style="padding:10px" data-options="closable:true">
+
+    </div>
+    <div data-options="region:'center',split:true,collapsible:true">
+      <div id="centerCC" class="easyui-layout" data-options="fit:true">
+        <div id="sccCenter" data-options="region:'center',border:false">
+          <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
+          <div id="vContent" class="vContent">
+            1.The UI only supports simple queries.<br>
+            2.UI grouping and key are not complete, you can use the search key.<br>
+            3.The Terminal operation is highly recommended for more commands and data presentation.<br>
+            4.Terminal type 'help' query to use.<br>
+            5.Keys,keysc, and keysv commands are implemented with scan, and keysv implements queries with pipeline, as
+            well as in cluster<br>
+          </div>
+          <!-- <div title="About" style="padding:10px" data-options="closable:true">
                 <p style="font-size:14px">jQuery EasyUI framework helps you build your web pages easily.</p>
                 <ul>
                   <li>easyui is a collection of user-interface plugin based on jQuery.</li>
@@ -1144,23 +1219,33 @@ return options;
                 This is the help content.
               </div> 
             </div>-->
-          </div>
+        </div>
 
 
-          <div id="south" data-options="region:'south',border:false,maximizable:true,split:true,collapsible:true" style="background-color: black;color: white;width: 100%;height: 200px;">
-            <div id='tabs' class="easyui-tabs"  style="width: 100%;">
-                
-            </div>
+        <div id="south" data-options="region:'south',border:false,maximizable:true,split:true,collapsible:true"
+          style="background-color: black;color: white;width: 100%;height: 200px;">
+          <div id='tabs' class="easyui-tabs" style="width: 100%;">
+
           </div>
+        </div>
       </div>
-  </div>
+    </div>
 
 
 
-  <div id="dd">
-  </div>
-  <div id="mm" class="easyui-menu" style="width:120px;">
-    <div id="keysv" value="" onclick="keysv(this);" data-options="iconCls:'icon-search'">keysv</div>
-  </div>
-  </body>
+    <div id="dd">
+    </div>
+    <div id="dbMm" class="easyui-menu" style="width:120px;">
+      <div id="addKey" value="" onclick="editKey(this);" data-options="iconCls:'icon-add'">add</div>
+    </div>
+    <div id="groubMm" class="easyui-menu" style="width:120px;">
+      <div id="keysv" value="" onclick="keysv(this);" data-options="iconCls:'icon-search'">keysv</div>
+    </div>
+    <div id="keyMm" class="easyui-menu" style="width:120px;">
+      <div id="ttlKey" value="" onclick="ttlKey(this);" data-options="iconCls:'icon-search'">ttl</div>
+      <div id="delKey" value="" onclick="delKey(this);" data-options="iconCls:'icon-remove'">del</div>
+      <div id="editKey" value="" onclick="editKey(this);" data-options="iconCls:'icon-edit'">edit</div>
+    </div>
+</body>
+
 </html>

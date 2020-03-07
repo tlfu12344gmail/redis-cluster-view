@@ -6,7 +6,7 @@ util.toArray = function(list) {
 };
 var map = new Map();
 var slotMap = new Map();
-var defautKeysSize=1000;
+var defautKeysSize=10000;
 var defaultGroupSize = defautKeysSize/50;
 const CMDS_DESC=[
   'show cons|dbs|commands',

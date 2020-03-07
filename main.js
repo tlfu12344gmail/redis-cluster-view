@@ -18,7 +18,7 @@ function createWindow () {
     }
   })
   //console.log(app.getPath('userData'));
-  //mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
   mainWindow.loadURL('./edit.html');
   // and load the index.html of the app.
   mainWindow.loadFile('index.html')
