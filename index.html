@@ -33,6 +33,7 @@
     var content = [];
     var isShowTree = false;
     var currentTabIndex = 0;
+    var groupMaxSize = 1000;
     initRedis();
     //   setRedisConfig();
     // function setRedisConfig(){
@@ -745,11 +746,17 @@
           var group = arr[i].substr(0, arr[i].indexOf(":"));
           if (map.get(group) != null) {
             key = children[map.get(group)];
+            key.childrenLength = key.childrenLength+1;
+            var groupLimit = command.defautKeysSize/10>groupMaxSize?groupMaxSize:command.defautKeysSize/10;
+            if(groupLimit<=key.children.length){
+              continue;
+            }
             var subKey = {};
             subKey.id = arr[i];
             subKey.text = arr[i];
             subKey.type = "key";
             subKey.db = db;
+            
             key.children.push(subKey);
           } else {
             key.id = group;
@@ -770,7 +777,9 @@
             subKey.type = "key";
             subChildren.push(subKey);
             key.children = subChildren;
+            key.childrenLength=1;
             children.push(key);
+           
             map.set(group, children.length - 1);
           }
         }
