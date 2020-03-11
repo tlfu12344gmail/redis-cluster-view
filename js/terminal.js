@@ -322,7 +322,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
       }else if(data.res && data.res=== data.res+""&& data.res.indexOf("use:")==0){
         useConnection(data.res.split(':')[1],0);
       }else if(data.res && data.res=== data.res+""&& data.res == "clear"){
-        $('output').empty();
+        $('#container'+currentTab+' output').empty();
       }else if(data.res && data.res=== data.res+""&& data.res == "dbs"){
         showDbs();
       }else if(data.res && data.res=== data.res+""&& data.res.indexOf("select:")==0){
