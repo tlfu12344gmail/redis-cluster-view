@@ -19,7 +19,9 @@
   },
   "scripts": {
     "start": "electron .",
-    "package": "electron-builder --mac --x64"
+    "package-mac": "electron-builder --mac --x64",
+    "package-win": "electron-builder --win --x64",
+    "package-linux": "electron-builder --linux --x64"
   },
   "repository": "https://github.com/tlfu12344gmail/redis-cluster-view",
   "keywords": [
