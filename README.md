@@ -9,6 +9,7 @@
 
 ![avatar](./img/pre.png)
 
+![avatar](./img/ui.png)
 
 ![avatar](./img/terminal.png)
 ## run
