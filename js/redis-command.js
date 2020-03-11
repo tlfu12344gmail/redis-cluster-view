@@ -1,12 +1,13 @@
 const crc = require('./crc16-ccitt');
-
+const store = require('./store.js');
 var util = util || {};
 util.toArray = function(list) {
   return Array.prototype.slice.call(list || [], 0);
 };
 var map = new Map();
 var slotMap = new Map();
-var defautKeysSize=10000;
+var appConfig = store.Store().get("appConfig");
+var defautKeysSize=appConfig.defautKeysSize;
 var defaultGroupSize = defautKeysSize/50;
 const CMDS_DESC=[
   'show cons|dbs|commands',

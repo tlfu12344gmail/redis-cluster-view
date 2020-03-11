@@ -26,6 +26,8 @@
 
     var profile = "no-connection";
     var store = require('./js/store.js');
+    initRedis();
+    initAppConfig();
     var term = require('./js/terminal.js');
     const redisCommand = require('./js/redis-command.js')
     const command = redisCommand.RedisCommand();
@@ -33,8 +35,7 @@
     var content = [];
     var isShowTree = false;
     var currentTabIndex = 0;
-    var groupMaxSize = 1000;
-    initRedis();
+    var groupMaxSize = command.defaultGroupSize;
     //   setRedisConfig();
     // function setRedisConfig(){
     //   store.Store().set("config",getRedisConfig());
@@ -46,6 +47,16 @@
 
 
     });
+    function initAppConfig(){
+      if (store.Store().get("appConfig") == null) {
+        store.Store().set("appConfig", getAppConfig());
+      }
+    }
+    function getAppConfig(){
+      var appConifg={"defautKeysSize":10000,
+                     "view":"main"};
+      return appConifg;
+    }
     function initRedis() {
       if (store.Store().get("config") == null) {
         store.Store().set("config", getRedisConfig());
