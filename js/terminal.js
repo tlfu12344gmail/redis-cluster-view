@@ -609,7 +609,7 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
       output('<img align="left" src="http://www.w3.org/html/logo/downloads/HTML5_Badge_128.png" width="100" height="100" style="padding: 0px 10px 20px 0px"><h2 style="letter-spacing: 4px">HTML5 Web Terminal</h2><p>' + new Date() + '</p><p>Enter "help" for more information.</p>');
     },
     output: output,
-    setCurrentTab:function(currentTab){
+    setCurrentTab:function(currentTasb){
       currentTab=currentTab;
     },
     syntaxHighlight:function(json){
