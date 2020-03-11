@@ -250,11 +250,13 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
         var cmd = args[0].toLowerCase();
         args = args.splice(1); // Remove cmd from arg list.
         if(cmd.indexOf("keys")==0&&args.length==1){
-          if(args[0].replace(/\*/g,"")==""){
-            args.push(command.defautKeysSize);
-          }else{
-            args.push(-1);
-          }
+          //限制每个节点的查询数上限，-1表示不够限制
+          args.push(command.defautKeysSize);
+          // if(args[0].replace(/\*/g,"")==""){
+          //   args.push(command.defautKeysSize);
+          // }else{
+          //   args.push(-1);
+          // }
         }
       }else{
         showLine();

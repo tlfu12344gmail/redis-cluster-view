@@ -513,6 +513,7 @@
           profile = profile + ":" + node.db;
         }
       }
+      alert("to do");
     }
     function keysv(o) {
       var node = dbNode = $('#tt').tree('getSelected');
@@ -821,8 +822,17 @@
           handler: function () {
             ddHandler(false, 'no');
           }
+        },
+        {
+          iconCls: 'icon-config',
+          handler: function () {
+            config();
+          }
         }]
       });
+    }
+    function config(){
+      alert("todo");
     }
     function ddHandler(isEdit, profile) {
       $('#dd').dialog({
@@ -1190,7 +1200,7 @@
 <body>
   <div id="cc" class="easyui-layout" style="width:100%;height:100%;">
     <div id="easyui-panel-connection"
-      data-options="region:'west',title:'connections',split:true,minWidth:250,maxWidth:400" style="width:250px;">
+      data-options="region:'west',title:'connections',split:true,minWidth:270,maxWidth:400" style="width:270px;">
       <input id="ss" class="easyui-searchbox" data-options="prompt:'Please Input Key,e.g:*key*',searcher:doSearch"
         style="width:100%"></input>
       <div class="easyui-panel" style="padding:5px;overflow-y:auto;width: 100%;">
