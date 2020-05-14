@@ -17,7 +17,7 @@ const CMDS_DESC=[
   'dbsize',
   'get key',
   'set key value [EX|PX seconds|milliseconds] [NX|XX]',
-  'del key [key ...]',
+  'del key [key ...][pattern]',
   'ttl key',
   'expire key seconds',
   'exists key',
@@ -369,6 +369,15 @@ function keyvPromise(currentRedis,keys){
     });
   });
 }
+
+  function delKeysPromise(currentRedis,keys){
+    var arr = buildPipelineArr(keys,'del');
+    return new Promise(function(resolve,reject){
+      currentRedis.pipeline(arr).exec().then(function(data){
+          resolve(data);
+      });
+    });
+  }
 function findNode(currentRedis,hp){
   var masters = currentRedis.nodes("master");
   for(var i=0;i<masters.length;i++){
@@ -393,6 +402,16 @@ if(isCluster){
 
   return Promise.all(pa);
   
+}
+function delKeysInCluster(currentRedis,isCluster,keys,profile) {
+  var pa = [];
+  var nodeKeyMap = getKeysNode(keys,profile);
+  for (var t of nodeKeyMap){
+    var node = findNode(currentRedis,t[0]);
+    var p= delKeysPromise(node,t[1]);
+    pa.push(p);
+  }
+  return Promise.all(pa);
 }
 
 const command =function(profile,cmd,args){
@@ -430,9 +449,9 @@ const command =function(profile,cmd,args){
                         if(keys[i][j]){
                           keyset.add(keys[i][j]);
                         }
-                        
+
                       }
-                  } 
+                  }
               }
               var keyArr=Array.from(keyset);
               //args[1]为查询的条数，集群下不做控制，每个节点下查这个数，返回的数据为args[1]*masters节点个数
@@ -542,32 +561,6 @@ const command =function(profile,cmd,args){
           currentRedis.get(args[0], function (err, res) {
               return resolve({err,res});
           });
-          // for(var i=0;i<100000;i++){
-          //   currentRedis.set("tzsu:age:"+i,i,function(err,res){
-
-          //   })
-          // }
-          // for(var i=0;i<10000;i++){
-          //   currentRedis.set("xinyin:addr:"+i,"tzsu:addr:"+i,function(err,res){
-              
-          //   })
-          // }
-          // for(var i=0;i<1000;i++){
-          //   currentRedis.set("tianming:tel:"+i,"tzsu:tel:"+i,function(err,res){
-              
-          //   })
-          // }
-          // for(var i=0;i<500;i++){
-          //   currentRedis.set("guang:hand:"+i,"tzsu:hand:"+i,function(err,res){
-              
-          //   })
-          // }
-          // for(var i=0;i<200;i++){
-          //   currentRedis.set("xu:sun:"+i,"tzsu:sun:"+i,function(err,res){
-              
-          //   })
-          // }
-
         break;
       case 'type':
           if(args.length>1){
@@ -587,9 +580,66 @@ const command =function(profile,cmd,args){
         break;
         
       case 'del':
-         currentRedis.del(args, function (err, res) {
+        if(args.length==1&&args[0].indexOf("*")!=-1){
+          const partern = args[0];
+          if(partern.replace(/\*/g,"")==""){
+            return resolve({err:"forbid del all keys",res:null});
+          }else{
+            if(instance.isCluster){
+              var masters = currentRedis.nodes("master");
+              Promise.all(
+                  masters.map(function(node) {
+                    return getNodeKeys(node,args[0],args[1]);
+                  })
+              ).then(function(keys) {
+                const keyset = new Set();
+                for(var i=0;i<keys.length;i++){
+                  if(keys[i].length>0){
+                    for(var j=0;j<keys[i].length;j++){
+                      if(keys[i][j]){
+                        keyset.add(keys[i][j]);
+                      }
+
+                    }
+                  }
+                }
+                const keyArr=Array.from(keyset);
+                delKeysInCluster(currentRedis,true,keyArr,profile).then(function(data){
+                  var sum = 0;
+                  for(var i=0;i<data.length;i++){
+                    sum=sum+data[i][0][1];
+                  }
+                  resolve({err:false,res:sum});
+                },function(e){
+                  return resolve({err:e,res:null});
+
+                });
+
+              },function(e){
+                return resolve({err:e,res:null});
+
+              });
+
+
+
+            }else {
+              const lua = "return redis.call('del',unpack(redis.call('keys',ARGV[1])))";
+              currentRedis.defineCommand("delKeys", {
+                numberOfKeys: 0,
+                lua: lua,
+              });
+
+              currentRedis.delKeys(partern, function (err, res) {
+                return resolve({err, res});
+              });
+            }
+          }
+
+        }else{
+          currentRedis.del(args, function (err, res) {
             return resolve({err,res});
           });
+        }
           break;
       case 'ttl':
         if(args.length>1){

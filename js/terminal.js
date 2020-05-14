@@ -72,6 +72,9 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
         }
       } 
   });
+  $(".tabs").bind('dblclick', function(e){
+    showLine();
+  });
  // cmdLine_.addEventListener('click', inputTextClick_, false);
   cmdLine_.addEventListener('keyup', historyHandler_, false);
   cmdLine_.addEventListener('keydown', processNewCommand_, false);
