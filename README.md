@@ -5,8 +5,9 @@
 
 3. Keys,keysc, and keysv commands are implemented with scan, and keysv implements queries with pipeline, as well as in cluster
 
+4. Support batch deletion, use lua + keys in stand-alone mode, scan + pipeline in cluster mode
 
-
+5. Double-click the terminal head cursor to return to the bottom
 ![avatar](./img/pre.png)
 
 ![avatar](./img/ui.png)
