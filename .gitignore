@@ -3,3 +3,4 @@ dist
 shenlan.txt
 release-package
 package-lock.json
+.idea

@@ -27,7 +27,6 @@ npm run package-linux
 
 Each platform can only have its own package
 
-## download && communication
-qq group:942050383
-
-![avatar](./img/redis-cluster-view.png)
+## app download 
+version:1.0.0
+链接: https://pan.baidu.com/s/1gERNGz-Ght37BJmUMGjE9A 提取码: 9nej
