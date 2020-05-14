@@ -2,3 +2,18 @@ electron.zip放的目录：
 mac:Library/Caches/electron/
 win:C:\Users\电脑名称（注意更换自己的电脑名称）\AppData\Local\electron-builder\cache
 linux:~/.cahce/electron/
+
+
+打包过程中可能遇到的问题
+1. 打包时下载electron-v7.1.9-linux-x64.zip文件失败
+解决办法：直接在淘宝的文件库下载，下载完成后放在 ~.cache/electron这个目录下
+
+2. 打包时下载appimage-12.0.1.7z文件失败
+下载地址：https://github.com/electron-userland/electron-builder-binaries/releases/download/appimage-12.0.1/appimage-12.0.1.7z
+
+下载完放到~.cache/electron-builder/appimage目录下，并在appimage文件夹下创建appimage-12.0.1文件夹，将压缩包的内容解压到这个文件夹
+
+3. 打包时下载snap-template-electron-4.0-2-amd64.tar.7z文件失败
+下载地址：https://github.com/electron-userland/electron-builder-binaries/releases/download/snap-template-4.0-2/snap-template-electron-4.0-2-amd64.tar.7z
+
+下载完放到~.cache/electron-builder/snap目录下，并在snap文件夹下创建snap-template-electron-4.0-2-amd64文件夹，将压缩包的内容解压到这个文件夹（注意：这一步需要解压两次，因为第一步解压出来的文件还是一个压缩包
