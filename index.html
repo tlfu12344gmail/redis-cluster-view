@@ -44,9 +44,20 @@
       resize();
       initTab();
       initUIComps();
-
-
     });
+
+    function findText(text) {
+      $(".json-string").css("background","");
+      var spans = $(".json-string");
+      if(spans){
+        for(var i=0;i<spans.length;i++){
+          const spanText = $(spans[i]).html();
+          if(spanText.indexOf(text)!=-1){
+            $(spans[i]).css("background","pink");
+          }
+        }
+      }
+    }
     function initAppConfig(){
       if (store.Store().get("appConfig") == null) {
         store.Store().set("appConfig", getAppConfig());
@@ -630,6 +641,7 @@
     }
     function vContentSet(dd) {
       $('#vContent').jsonViewer(dd, { collapsed: false, withQuotes: true, withLinks: false });
+      findText("key");
     }
     function loadDbData(isCluster, profile, pattern, selected, isSearch) {
       var db = $("#databaseSelect").combobox("getValue");
@@ -1206,6 +1218,21 @@
       loadDbData(false, db.split(":")[0], value, $('#tt').tree('find', nodeId), true);
     }
   </script>
+  <style>
+    .jsonSearch{
+      top: 2px;
+      background-color: #fff000;
+      height: 30px;
+      position: fixed;
+      width: 20%;
+      right: 5px;
+    }
+    .jsonSearchInput{
+      height: 30px;
+      width: 80%;
+      outline:none
+    }
+  </style>
 </head>
 
 <body>
@@ -1223,6 +1250,9 @@
       <div id="centerCC" class="easyui-layout" data-options="fit:true">
         <div id="sccCenter" data-options="region:'center',border:false">
           <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
+          <div class="jsonSearch"><input class="jsonSearchInput" id="jsonSearch" />
+
+          </div>
           <div id="vContent" class="vContent">
             <br>
             1.UI只提供简单的查询，并且只展示部分key(默认10000，每个分组为1000)，可以用模糊查询去找相关的key集合。推荐使用terminal,同时也熟悉redis的命令，注意：terminal是查所有的值.<br>
