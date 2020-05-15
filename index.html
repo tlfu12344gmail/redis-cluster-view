@@ -44,9 +44,20 @@
       resize();
       initTab();
       initUIComps();
-
-
     });
+
+    function findText(text) {
+      $(".json-string").css("background","");
+      var spans = $(".json-string");
+      if(spans){
+        for(var i=0;i<spans.length;i++){
+          const spanText = $(spans[i]).html();
+          if(spanText.indexOf(text)!=-1){
+            $(spans[i]).css("background","pink");
+          }
+        }
+      }
+    }
     function initAppConfig(){
       if (store.Store().get("appConfig") == null) {
         store.Store().set("appConfig", getAppConfig());
@@ -630,6 +641,7 @@
     }
     function vContentSet(dd) {
       $('#vContent').jsonViewer(dd, { collapsed: false, withQuotes: true, withLinks: false });
+      findText("key");
     }
     function loadDbData(isCluster, profile, pattern, selected, isSearch) {
       var db = $("#databaseSelect").combobox("getValue");
@@ -1206,6 +1218,21 @@
       loadDbData(false, db.split(":")[0], value, $('#tt').tree('find', nodeId), true);
     }
   </script>
+  <style>
+    .jsonSearch{
+      top: 2px;
+      background-color: #fff000;
+      height: 30px;
+      position: fixed;
+      width: 20%;
+      right: 5px;
+    }
+    .jsonSearchInput{
+      height: 30px;
+      width: 80%;
+      outline:none
+    }
+  </style>
 </head>
 
 <body>
@@ -1223,6 +1250,9 @@
       <div id="centerCC" class="easyui-layout" data-options="fit:true">
         <div id="sccCenter" data-options="region:'center',border:false">
           <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
+          <div class="jsonSearch"><input class="jsonSearchInput" id="jsonSearch" />
+
+          </div>
           <div id="vContent" class="vContent">
             1.The UI only supports simple queries.<br>
             2.UI grouping and key are not complete, you can use the search key.<br>
@@ -1234,24 +1264,6 @@
 
             7. Double-click the terminal head cursor to return to the bottom<br>
           </div>
-          <!-- <div title="About" style="padding:10px" data-options="closable:true">
-                <p style="font-size:14px">jQuery EasyUI framework helps you build your web pages easily.</p>
-                <ul>
-                  <li>easyui is a collection of user-interface plugin based on jQuery.</li>
-                  <li>easyui provides essential functionality for building modem, interactive, javascript applications.</li>
-                  <li>using easyui you don't need to write many javascript code, you usually defines user-interface by writing some HTML markup.</li>
-                  <li>complete framework for HTML5 web page.</li>
-                  <li>easyui save your time and scales while developing your products.</li>
-                  <li>easyui is very easy but powerful.</li>
-                </ul>
-              </div>
-              <div title="My Documents" style="padding:10px" data-options="closable:true">
-                <ul class="easyui-tree" data-options="url:'tree_data1.json',method:'get',animate:true"></ul>
-              </div>
-              <div title="Help" data-options="iconCls:'icon-help',closable:true" style="padding:10px">
-                This is the help content.
-              </div> 
-            </div>-->
         </div>
 
 

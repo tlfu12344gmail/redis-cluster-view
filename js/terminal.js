@@ -65,6 +65,9 @@ var Terminal = Terminal || function(cmdLineContainer, outputContainer,currentTab
     }
   });
   $("#south").bind('dblclick', function(e){
+
+
+    //selectRange($("#vContent")[0])
     if(e.target.className=="pSize"){
       var text = $(e.target).next();
         if(text){
