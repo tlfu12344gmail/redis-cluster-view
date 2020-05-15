@@ -29,6 +29,6 @@ npm run package-linux
 Each platform can only have its own package
 
 ## app download 
-version:1.0.1
+version:1.1.0
 链接: https://pan.baidu.com/s/1gERNGz-Ght37BJmUMGjE9A 提取码: 9nej
 qq群号:942050383
