@@ -95,7 +95,11 @@
             if(last>=0){
               $(spanOArr[last].span).css("background", "pink");
             }else{
-              $(spanOArr[spanOArr.length-1].span).css("background", "pink");
+              if(spanOArr.length==1){
+                $(spanOArr[spanOArr.length-1].span).css("background", "red");
+              }else{
+                $(spanOArr[spanOArr.length-1].span).css("background", "pink");
+              }
             }
 
           } else {
