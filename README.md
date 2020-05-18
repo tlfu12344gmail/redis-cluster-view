@@ -7,9 +7,10 @@
 
 4. Support batch deletion, use lua + keys in stand-alone mode, scan + pipeline in cluster mode
 
-5. Double-click the terminal head cursor to return to the bottom
+5. Double-click the terminal head cursor to return to the bottom.
 
-6. ctrl+f 搜索，类似浏览器搜索
+6. ctrl+f search，enter search next，ctrl+l search last.
+
 ![avatar](./img/pre.png)
 
 ![avatar](./img/ui.png)
