@@ -151,12 +151,16 @@
         }
         if (count > 0) {
           $("#jsonSearchSpan").html("1/" + count);
+        }else{
+          $("#jsonSearchSpan").html("0/0");
         }
 
         if (searchArr.length > 0) {
           searchMap.set(text, searchArr);
         }
 
+      }else{
+        $("#jsonSearchSpan").html("0/0");
       }
     }
 
