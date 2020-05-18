@@ -9,12 +9,14 @@
 
 5. Double-click the terminal head cursor to return to the bottom
 
-6. ctrl+f 搜索，类型浏览器搜索
+6. ctrl+f 搜索，类似浏览器搜索
 ![avatar](./img/pre.png)
 
 ![avatar](./img/ui.png)
 
 ![avatar](./img/terminal.png)
+
+![avatar](./img/search.png)
 ## run
 npm install
 
