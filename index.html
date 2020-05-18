@@ -94,7 +94,9 @@
             $(spanOArr.span).css("background", "blue");
             var last = searchIndex-1;
             if(last>=0){
-              $(spanOArr[last].span).css("background", "pink");
+              $(spanOArr[last].span).css("background", "red");
+            }else{
+              $(spanOArr[spanOArr.length-1].span).css("background", "red");
             }
 
           } else {
@@ -127,7 +129,7 @@
         for (var i = 0; i < spans.length; i++) {
           const spanText = $(spans[i]).html();
           if (spanText.indexOf(text) != -1) {
-            $(spans[i]).css("background", "pink");
+            $(spans[i]).css("background", "red");
             const isUI = $(spans[i]).parents("#vContent").length > 0;
             var spanO = {};
             spanO.span = $(spans[i]);
