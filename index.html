@@ -3,14 +3,14 @@
 <html>
 
 <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+  <meta charset="utf-8"/>
+  <meta http-equiv="X-UA-Compatible" content="chrome=1"/>
   <title>redis-cluster-view</title>
 
   <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/default/easyui.css">
   <link rel="stylesheet" type="text/css" href="./jquery-easyui/themes/icon.css">
-  <link href="./css/terminal.css" rel="stylesheet" type="text/css" />
-  <link href="./css/easyui-cus.css" rel="stylesheet" type="text/css" />
+  <link href="./css/terminal.css" rel="stylesheet" type="text/css"/>
+  <link href="./css/easyui-cus.css" rel="stylesheet" type="text/css"/>
   <link href="./css/jquery.json-viewer.css" type="text/css" rel="stylesheet">
   <link rel="import" href="./edit.html">
   <!-- <link rel="stylesheet" type="text/css" href="./jquery-easyui/demo/demo.css"> -->
@@ -47,119 +47,186 @@
       bindSearchEvent();
       bindCtrlF();
     });
+
     function bindCtrlF() {
-      $(document).keypress(function(e){
-        if(e.ctrlKey && e.key == 'f'){
+      $(document).keypress(function (e) {
+        if (e.ctrlKey && e.key == 'f') {
           $("#jsonSearchInput").val('');
           var dispay = $(".jsonSearch").css("display");
-          if(dispay=="block"){
-            $(".jsonSearch").css("display","none");
-          }else{
-            $(".jsonSearch").css("display","block");
+          if (dispay == "block") {
+            $(".jsonSearch").css("display", "none");
+          } else {
+            $(".jsonSearch").css("display", "block");
             $("#jsonSearchInput").focus()
           }
 
         }
-    });
+      });
     }
+
     function hideSearch() {
+      resetSearch();
       $("#jsonSearchInput").val('');
-      $(".jsonSearch").css("display","none");
+      $(".jsonSearch").css("display", "none");
     }
+
     function bindSearchEvent() {
-      $('#jsonSearchInput').bind('keypress',function(event){
-        if(event.keyCode == "13")
-        {
+      $('#jsonSearchInput').bind('keypress', function (event) {
+        if (event.keyCode == "13") {
           const value = $('#jsonSearchInput').val();
-          if(value==""){
+          if (value == "") {
             return;
           }
-          findText(value);
+          if (searchMap != null && searchMap.has(value)) {
+            searchIndex++;
+            var spanOArr = searchMap.get(value);
+            if(searchIndex>=spanOArr.length){
+              searchIndex=0;
+            }
+            var spanO = spanOArr[searchIndex];
+            if (spanO.isUI) {
+              $('#sccCenter').scrollTop($(spanO.span)[0].offsetTop);
+            } else {
+              $("#container" + currentTabIndex).scrollTop(($(spanO.span)[0].offsetTop - 32));
+            }
+            $("#jsonSearchSpan").html(searchIndex+1+"/" + spanOArr.length);
+            $(spanO.span).css("background", "blue");
+            $(spanOArr.span).css("background", "blue");
+            var last = searchIndex-1;
+            if(last>=0){
+              $(spanOArr[last].span).css("background", "pink");
+            }
+
+          } else {
+            resetSearch();
+            findText(value);
+          }
+
         }
       });
 
     }
+
+    var searchArr = null;
+    var searchMap = null;
+    var searchIndex = 0;
+
+    function resetSearch() {
+      searchArr = null;
+      searchMap = null;
+      searchIndex = 0;
+    }
+
     function findText(text) {
-      $(".json-string").css("background","");
+      searchArr = new Array();
+      searchMap = new Map();
+      $(".json-string").css("background", "");
       var spans = $(".json-string");
-      if(spans){
+      if (spans) {
         var count = 0;
-        for(var i=0;i<spans.length;i++){
+        for (var i = 0; i < spans.length; i++) {
           const spanText = $(spans[i]).html();
-          if(spanText.indexOf(text)!=-1){
-            $(spans[i]).css("background","pink");
+          if (spanText.indexOf(text) != -1) {
+            $(spans[i]).css("background", "pink");
+            const isUI = $(spans[i]).parents("#vContent").length > 0;
+            var spanO = {};
+            spanO.span = $(spans[i]);
+            spanO.isUI = isUI;
+            searchArr.push(spanO);
+            if (count == 0) {
+              $(spans[i]).css("background", "blue");
+              if ($(spans[i]).parents("#vContent").length > 0) {
+                $('#sccCenter').scrollTop($(spans[i])[0].offsetTop);
+              } else {
+                $("#container" + currentTabIndex).scrollTop(($(spans[i])[0].offsetTop - 32));
+              }
+            }
             count++;
           }
         }
-        if(count>0){
-          $("#jsonSearchSpan").html(count);
+        if (count > 0) {
+          $("#jsonSearchSpan").html("1/" + count);
         }
+
+        if (searchArr.length > 0) {
+          searchMap.set(text, searchArr);
+        }
+
       }
     }
-    function initAppConfig(){
+
+    function initAppConfig() {
       if (store.Store().get("appConfig") == null) {
         store.Store().set("appConfig", getAppConfig());
       }
     }
-    function getAppConfig(){
-      var appConifg={"defautKeysSize":10000,
-                     "view":"main"};
+
+    function getAppConfig() {
+      var appConifg = {
+        "defautKeysSize": 10000,
+        "view": "main"
+      };
       return appConifg;
     }
+
     function initRedis() {
       if (store.Store().get("config") == null) {
         store.Store().set("config", getRedisConfig());
       }
     }
+
     function getRedisConfig() {
       var options =
-        [{
-          "profile": "native-demo", "connection": {
-            port: 6379, // Redis port
-            host: "localhost", // Redis host
-            password: "",
-            db: 0,
-            retryStrategy: function (times) {
-              var delay = Math.min(times * 50, 2000);
-              return delay;
+          [{
+            "profile": "native-demo", "connection": {
+              port: 6379, // Redis port
+              host: "localhost", // Redis host
+              password: "",
+              db: 0,
+              retryStrategy: function (times) {
+                var delay = Math.min(times * 50, 2000);
+                return delay;
+              }
             }
-          }
-        },
-        {
-          "profile": "cluseter-demo", "connection": [{
-            port: 6379,
-            password: '1234',
-            host: 'localhost'
-          }, {
-            port: 6380,
-            password: '1234',
-            host: 'localhost'
-          }, {
-            port: 6381,
-            password: '1234',
-            host: 'localhost'
-          }, {
-            port: 6382,
-            password: '1234',
-            host: 'localhost'
-          }, {
-            port: 6383,
-            password: '1234',
-            host: 'localhost'
-          }, {
-            port: 6384,
-            password: '1234',
-            host: 'localhost'
-          }]
-        }
-        ]
+          },
+            {
+              "profile": "cluseter-demo", "connection": [{
+                port: 6379,
+                password: '1234',
+                host: 'localhost'
+              }, {
+                port: 6380,
+                password: '1234',
+                host: 'localhost'
+              }, {
+                port: 6381,
+                password: '1234',
+                host: 'localhost'
+              }, {
+                port: 6382,
+                password: '1234',
+                host: 'localhost'
+              }, {
+                port: 6383,
+                password: '1234',
+                host: 'localhost'
+              }, {
+                port: 6384,
+                password: '1234',
+                host: 'localhost'
+              }]
+            }
+          ]
 
       return options;
     }
+
     function initTerminal() {
-      term.Terminal('#input-line' + currentTabIndex + ' .cmdline', '#container' + currentTabIndex + ' output', currentTabIndex);
+      term.Terminal('#input-line' + currentTabIndex + ' .cmdline', '#container' + currentTabIndex + ' output',
+          currentTabIndex);
       $('#input-line' + currentTabIndex + ' .prompt').html('use command "help" to show usage>');
     }
+
     function initTab() {
       $('#tabs').tabs('add', {
         title: 'terminal-0',
@@ -180,16 +247,17 @@
         }
       });
       //panel-tool-restore
-      $("#tabs .tabs-wrap").append('<div class="panel-tool"><a href="javascript:;" class="panel-tool-max"></a><a href="javascript:;" class="layout-button-down"></a></div>');
+      $("#tabs .tabs-wrap").append(
+          '<div class="panel-tool"><a href="javascript:;" class="panel-tool-max"></a><a href="javascript:;" class="layout-button-down"></a></div>');
       $("#tabs .tabs-wrap .panel-tool-max").bind('click', function (e) {
         if ($(this).hasClass('panel-tool-restore')) {
           $(this).removeClass('panel-tool-restore');
-          $('#centerCC').layout('panel', 'south').panel('resize', { height: 160 });
+          $('#centerCC').layout('panel', 'south').panel('resize', {height: 160});
           $('#centerCC').layout('resize');
         } else {
           $(this).addClass('panel-tool-restore');
           //$('#centerCC').layout().panel('south').resize({'height':500});
-          $('#centerCC').layout('panel', 'south').panel('resize', { height: $("#centerCC").css('height') });
+          $('#centerCC').layout('panel', 'south').panel('resize', {height: $("#centerCC").css('height')});
           $('#centerCC').layout('resize');
         }
       });
@@ -209,17 +277,18 @@
 
     function getTabContent() {
       return '<div title="Terminal"  style="background-color: black;">' +
-        '<div id="container' + currentTabIndex + '" style="overflow-y: auto;height:160px;width: 100%;">' +
-        '<output></output>' +
-        '<div id="input-line' + currentTabIndex + '" class="input-line">' +
-        '<div class="prompt"></div>' +
-        '<div style="position: relative;">' +
-        '<input  class="cmdline"/><span class="placeholder"></span>' +
-        '</div>' +
-        '</div>' +
-        '</div>' +
-        '</div> ';
+          '<div id="container' + currentTabIndex + '" style="overflow-y: auto;height:160px;width: 100%;">' +
+          '<output></output>' +
+          '<div id="input-line' + currentTabIndex + '" class="input-line">' +
+          '<div class="prompt"></div>' +
+          '<div style="position: relative;">' +
+          '<input  class="cmdline"/><span class="placeholder"></span>' +
+          '</div>' +
+          '</div>' +
+          '</div>' +
+          '</div> ';
     }
+
     function addTab() {
       currentTabIndex++;
       $('#tabs').tabs('add', {
@@ -230,6 +299,7 @@
       });
       initTerminal();
     }
+
     $.extend($.fn.panel.methods, {
       showMask: function (jq, msg) {
         return jq.each(function () {
@@ -251,7 +321,7 @@
           });
           m.children('div.panel-mask-msg').remove();
           var mm = $('<div class="panel-mask-msg"></div>').appendTo(m);
-          mm.html(msg).css({ position: 'absolute' }).css({
+          mm.html(msg).css({position: 'absolute'}).css({
             position: 'absolute',
             top: '50%',
             left: '50%',
@@ -266,6 +336,7 @@
         })
       }
     });
+
     function cssRisize() {
       $("div[id*='container']").each(function (e) {
         $(this).css('height', parseInt($('#south').css('height').replace('px', '')) - 35);
@@ -277,6 +348,7 @@
       // $("#sccCenter .textbox").css('height',parseInt($("#sccCenter").css('height').replace('px',''))-35);   
 
     }
+
     function resize() {
       $('#centerCC').layout('panel', 'south').panel({
         onResize: function (width, height) {
@@ -285,12 +357,14 @@
       });
       // $("#sccCenter .textbox").css('height',parseInt($("#sccCenter").css('height').replace('px',''))-35);   
     }
+
     function initUIComps() {
       initDD();
       initCCInput();
       initCC();
       initContentView();
     }
+
     function selectRange(text) {
       if (document.body.createTextRange) {
         var range = document.body.createTextRange();
@@ -305,6 +379,7 @@
 
       }
     }
+
     function initContentView() {
       $("#vContent").bind("dblclick", function (e) {
         //e.preventDefault();
@@ -316,7 +391,9 @@
         }
       });
     }
+
     var contentJson = [];
+
     function initRedisConnect(profile, db) {
       var value = $("#databaseSelect").combobox("getValue");
       if (value == profile + ":db" + db) {
@@ -350,6 +427,7 @@
         redisCommand.RedisCommand().init(profile + ":" + db, instance);
       }
     }
+
     function initTreeData(profile, isCluster) {
       var treeData = {};
       treeData.id = profile;
@@ -379,6 +457,7 @@
         initTreeDatabases(profile, isCluster);
       });
     }
+
     function initTreeDatabases(profile, isCluster) {
       $('#tt').tree({
         data: contentJson,
@@ -457,6 +536,7 @@
         }
       });
     }
+
     function loadKeyValue(isCluster, profile, node) {
       $.messager.progress({
         title: 'info',
@@ -490,6 +570,7 @@
       });
 
     }
+
     function ttlKey(o) {
       var node = dbNode = $('#tt').tree('getSelected');
       if (node && o) {
@@ -514,6 +595,7 @@
         });
       }
     }
+
     function delKey(o) {
       var node = dbNode = $('#tt').tree('getSelected');
       if (node && o) {
@@ -548,7 +630,8 @@
                   if (dbNode) {
                     $('#tt').tree('update', {
                       target: dbNode.target,
-                      text: dbNode.text.replace(/<span.*?span>/, "") + ' <span style=\'color:blue\'>(0/' + data.res + ')</span>'
+                      text: dbNode.text.replace(/<span.*?span>/, "") + ' <span style=\'color:blue\'>(0/' + data.res
+                          + ')</span>'
                     });
                   }
                 });
@@ -561,6 +644,7 @@
       }
 
     }
+
     function editKey(o) {
       var node = dbNode = $('#tt').tree('getSelected');
       if (node && o) {
@@ -575,6 +659,7 @@
       }
       alert("to do");
     }
+
     function keysv(o) {
       var node = dbNode = $('#tt').tree('getSelected');
       if (node && o) {
@@ -600,8 +685,8 @@
         });
       }
 
-
     }
+
     function getHastV(profile, key, type) {
       var arg = [];
       arg.push(key);
@@ -616,6 +701,7 @@
         $.messager.progress('close');
       })
     }
+
     function getListV(profile, key, type) {
       var arg = [];
       arg.push(key);
@@ -632,6 +718,7 @@
         $.messager.progress('close');
       })
     }
+
     function getZSetV(profile, key, type) {
       var arg = [];
       arg.push(key);
@@ -649,6 +736,7 @@
         $.messager.progress('close');
       })
     }
+
     function getSetV(profile, key, type) {
       var arg = [];
       arg.push(key);
@@ -663,6 +751,7 @@
         $.messager.progress('close');
       })
     }
+
     function getStringV(profile, key, type) {
       var arg = [];
       arg.push(key);
@@ -677,9 +766,12 @@
         $.messager.progress('close');
       })
     }
+
     function vContentSet(dd) {
-      $('#vContent').jsonViewer(dd, { collapsed: false, withQuotes: true, withLinks: false });
+      $('#vContent').jsonViewer(dd, {collapsed: false, withQuotes: true, withLinks: false});
+      resetSearch();
     }
+
     function loadDbData(isCluster, profile, pattern, selected, isSearch) {
       var db = $("#databaseSelect").combobox("getValue");
       var nodeId = db.split(":")[1].replace("db", "");
@@ -742,7 +834,8 @@
             var length = arr.length;
             $('#tt').tree('update', {
               target: dbNode.target,
-              text: dbNode.text.replace(/<span.*?span>/, "") + ' <span style=\'color:blue\'>(' + length + '/' + data.res + ')</span>'
+              text: dbNode.text.replace(/<span.*?span>/, "") + ' <span style=\'color:blue\'>(' + length + '/' + data.res
+                  + ')</span>'
             });
           }
 
@@ -751,6 +844,7 @@
         $.messager.progress('close');
       });
     }
+
     function bulidDbChildren(profile, arr, isClose) {
       var db = 0;
       if (profile.indexOf(":") != -1) {
@@ -788,6 +882,7 @@
       }
       return children;
     }
+
     function buildNodeChildren(profile, arr, isClose) {
       var db = 0;
       if (profile.indexOf(":") != -1) {
@@ -807,9 +902,9 @@
           var group = arr[i].substr(0, arr[i].indexOf(":"));
           if (map.get(group) != null) {
             key = children[map.get(group)];
-            key.childrenLength = key.childrenLength+1;
-            var groupLimit = command.defautKeysSize/10>groupMaxSize?groupMaxSize:command.defautKeysSize/10;
-            if(groupLimit<=key.children.length){
+            key.childrenLength = key.childrenLength + 1;
+            var groupLimit = command.defautKeysSize / 10 > groupMaxSize ? groupMaxSize : command.defautKeysSize / 10;
+            if (groupLimit <= key.children.length) {
               continue;
             }
             var subKey = {};
@@ -817,7 +912,7 @@
             subKey.text = arr[i];
             subKey.type = "key";
             subKey.db = db;
-            
+
             key.children.push(subKey);
           } else {
             key.id = group;
@@ -838,18 +933,17 @@
             subKey.type = "key";
             subChildren.push(subKey);
             key.children = subChildren;
-            key.childrenLength=1;
+            key.childrenLength = 1;
             children.push(key);
-           
+
             map.set(group, children.length - 1);
           }
         }
 
-
-
       }
       return children;
     }
+
     function initTree(profile) {
       $.messager.progress({
         title: 'info',
@@ -869,10 +963,13 @@
         testTreeCluster(con, profile);
       }
     }
+
     function initCCInput() {
       $('.layout-split-west .panel-title').css("height", "25px");
-      $('.layout-split-west .panel-title').prepend('<input id="databaseSelect"  style="width:190px;height:25px"></input>');
+      $('.layout-split-west .panel-title').prepend(
+          '<input id="databaseSelect"  style="width:190px;height:25px"></input>');
     }
+
     function initDD() {
       $('#easyui-panel-connection').panel({
         height: 150,
@@ -883,17 +980,19 @@
             ddHandler(false, 'no');
           }
         },
-        {
-          iconCls: 'icon-config',
-          handler: function () {
-            config();
-          }
-        }]
+          {
+            iconCls: 'icon-config',
+            handler: function () {
+              config();
+            }
+          }]
       });
     }
-    function config(){
+
+    function config() {
       alert("todo");
     }
+
     function ddHandler(isEdit, profile) {
       $('#dd').dialog({
         bgiframe: true,
@@ -948,6 +1047,7 @@
       });
 
     }
+
     function initCC() {
 
       var config = store.Store().get("config");
@@ -1015,8 +1115,8 @@
       $('.l-btn').css('border', '0px');
       $('.combobox-item').css('position', 'relative');
 
-
     }
+
     function findProfileConfig(profile) {
       var config = store.Store().get("config");
       for (var i = 0; i < config.length; i++) {
@@ -1026,6 +1126,7 @@
         }
       }
     }
+
     function removeProfile(profile) {
       var config = store.Store().get("config");
       var newConfig = [];
@@ -1045,6 +1146,7 @@
       }
       content = newContent;
     }
+
     function setCCDefautValue() {
       if (content.length > 0) {
         $("#databaseSelect").combobox('setValue', 'select a connection');
@@ -1052,6 +1154,7 @@
         $("#databaseSelect").combobox('setValue', 'config connection first!');
       }
     }
+
     function checkParams() {
       var alias = $('#alias').textbox('getValue').trim();
       var aliasHidden = $('#aliasHidden').val().trim();
@@ -1081,6 +1184,7 @@
       }
       return true;
     }
+
     function test() {
       var isPass = checkParams();
       if (!isPass) {
@@ -1096,6 +1200,7 @@
         testCluster(hosts.split(','), password);
       }
     }
+
     function testCluster(hosts, password) {
       const cluserOption = {
         clusterRetryStrategy: function (times) {
@@ -1121,6 +1226,7 @@
         $('#dd').dialog('hideMask');
       });
     }
+
     function testSingle(hosts, password) {
       var con = {
         port: hosts.split(":")[1], // Redis port
@@ -1142,6 +1248,7 @@
         $('#dd').dialog('hideMask');
       });
     }
+
     function testTreeSingle(profile, hosts, password) {
       var con = {
         port: hosts.split(":")[1], // Redis port
@@ -1164,6 +1271,7 @@
         }
       });
     }
+
     function testTreeCluster(con, profile) {
       const cluserOption = {
         clusterRetryStrategy: function (times) {
@@ -1183,6 +1291,7 @@
         }
       });
     }
+
     function save(isEdit) {
       var isPass = checkParams();
       if (!isPass) {
@@ -1209,6 +1318,7 @@
       content = [];
       initCC();
     }
+
     function saveSingle(alias, hosts, password, config) {
       var con = {
         "profile": alias, "connection": {
@@ -1227,6 +1337,7 @@
       //store.Store().del("config");
       store.Store().set("config", config);
     }
+
     function saveCluster(alias, hosts, password, config) {
       var connection = [];
       for (var i = 0; i < hosts.length; i++) {
@@ -1236,14 +1347,18 @@
         con.port = hosts[i].split(':')[1];
         connection.push(con);
       }
-      var cluster = { "profile": alias, "connection": connection };
+      var cluster = {"profile": alias, "connection": connection};
       config.push(cluster);
       store.Store().set("config", config);
     }
+
     function formatItem(row) {
-      var s = '<span style="font-weight:bold">' + row.profile + '</span><div style="text-align: right;display:inline;float:right;"><a href="#" id=' + row.profile + 'edit></a><a href="#" id=' + row.profile + '></a></div>'
+      var s = '<span style="font-weight:bold">' + row.profile
+          + '</span><div style="text-align: right;display:inline;float:right;"><a href="#" id=' + row.profile
+          + 'edit></a><a href="#" id=' + row.profile + '></a></div>'
       return s;
     }
+
     function doSearch(value) {
 
       var db = $("#databaseSelect").combobox("getValue");
@@ -1256,20 +1371,22 @@
     }
   </script>
   <style>
-    .jsonSearch{
+    .jsonSearch {
       top: 2px;
       height: 25px;
       position: fixed;
-      width: 20%;
+      width: 25%;
       right: 5px;
     }
-    .jsonSearchInput{
+
+    .jsonSearchInput {
       height: 25px;
       width: 70%;
-      outline:none;
+      outline: none;
       margin-right: 5px;
     }
-    .clearImg{
+
+    .clearImg {
       display: inline-block;
       vertical-align: middle;
     }
@@ -1277,65 +1394,65 @@
 </head>
 
 <body>
-  <div id="cc" class="easyui-layout" style="width:100%;height:100%;">
-    <div id="easyui-panel-connection"
-      data-options="region:'west',title:'connections',split:true,minWidth:270,maxWidth:400" style="width:270px;">
-      <input id="ss" class="easyui-searchbox" data-options="prompt:'Please Input Key,e.g:*key*',searcher:doSearch"
-        style="width:100%"></input>
-      <div class="easyui-panel" style="padding:5px;overflow-y:auto;width: 100%;">
-        <ul id="tt"></ul>
-      </div>
-
+<div id="cc" class="easyui-layout" style="width:100%;height:100%;">
+  <div id="easyui-panel-connection"
+       data-options="region:'west',title:'connections',split:true,minWidth:270,maxWidth:400" style="width:270px;">
+    <input id="ss" class="easyui-searchbox" data-options="prompt:'Please Input Key,e.g:*key*',searcher:doSearch"
+           style="width:100%"></input>
+    <div class="easyui-panel" style="padding:5px;overflow-y:auto;width: 100%;">
+      <ul id="tt"></ul>
     </div>
-    <div data-options="region:'center',split:true,collapsible:true">
-      <div id="centerCC" class="easyui-layout" data-options="fit:true">
-        <div id="sccCenter" data-options="region:'center',border:false">
-          <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
-          <div class="jsonSearch" style="display: none"><input class="jsonSearchInput" id="jsonSearchInput" /><span id="jsonSearchSpan">0</span>
-          <img class="clearImg" src="./jquery-easyui/themes/icons/clear.png" onclick="hideSearch()" />
-          </div>
-          <div id="vContent" class="vContent">
-            <br>
-            1.UI只提供简单的查询，并且只展示部分key(默认10000，每个分组为1000)，可以用模糊查询去找相关的key集合。推荐使用terminal,同时也熟悉redis的命令，注意：terminal是查所有的值.<br>
-            <br>
-            2.keys命令是用scan实现，自定义keysc和keysv命令，keysv命令是用scan和pipeline实现.<br>
-            <br>
-            3.terminal支持模糊删除，如：del *key*,单机模式用lua+keys实现，集群用scan+pipeline实现<br>
-            <br>
-            4.双击terminal头部，光标滚动到最底部，方便数据量大时展示快速继续输入命令<br>
-            <br>
-            <span style="background-color: red">
+
+  </div>
+  <div data-options="region:'center',split:true,collapsible:true">
+    <div id="centerCC" class="easyui-layout" data-options="fit:true">
+      <div id="sccCenter" data-options="region:'center',border:false">
+        <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
+        <div class="jsonSearch" style="display: none"><input class="jsonSearchInput" id="jsonSearchInput"/><span
+            id="jsonSearchSpan">0/0</span>
+          <img class="clearImg" src="./jquery-easyui/themes/icons/clear.png" onclick="hideSearch()"/>
+        </div>
+        <div id="vContent" class="vContent">
+          <br>
+          1.UI只提供简单的查询，并且只展示部分key(默认10000，每个分组为1000)，可以用模糊查询去找相关的key集合。推荐使用terminal,同时也熟悉redis的命令，注意：terminal是查所有的值.<br>
+          <br>
+          2.keys命令是用scan实现，自定义keysc和keysv命令，keysv命令是用scan和pipeline实现.<br>
+          <br>
+          3.terminal支持模糊删除，如：del *key*,单机模式用lua+keys实现，集群用scan+pipeline实现<br>
+          <br>
+          4.双击terminal头部，光标滚动到最底部，方便数据量大时展示快速继续输入命令<br>
+          <br>
+          <span style="background-color: red">
             5.欢迎提宝贵意见:https://github.com/tlfu12344gmail/redis-cluster-view<br>
               qq群号:942050383 <br></span>
 
-          </div>
         </div>
+      </div>
 
 
-        <div id="south" data-options="region:'south',border:false,maximizable:true,split:true,collapsible:true"
-          style="background-color: black;color: white;width: 100%;height: 200px;">
-          <div id='tabs' class="easyui-tabs" style="width: 100%;">
+      <div id="south" data-options="region:'south',border:false,maximizable:true,split:true,collapsible:true"
+           style="background-color: black;color: white;width: 100%;height: 200px;">
+        <div id='tabs' class="easyui-tabs" style="width: 100%;">
 
-          </div>
         </div>
       </div>
     </div>
+  </div>
 
 
-
-    <div id="dd">
-    </div>
-    <div id="dbMm" class="easyui-menu" style="width:120px;">
-      <div id="addKey" value="" onclick="editKey(this);" data-options="iconCls:'icon-add'">add</div>
-    </div>
-    <div id="groubMm" class="easyui-menu" style="width:120px;">
-      <div id="keysv" value="" onclick="keysv(this);" data-options="iconCls:'icon-search'">keysv</div>
-    </div>
-    <div id="keyMm" class="easyui-menu" style="width:120px;">
-      <div id="ttlKey" value="" onclick="ttlKey(this);" data-options="iconCls:'icon-search'">ttl</div>
-      <div id="delKey" value="" onclick="delKey(this);" data-options="iconCls:'icon-remove'">del</div>
-      <div id="editKey" value="" onclick="editKey(this);" data-options="iconCls:'icon-edit'">edit</div>
-    </div>
+  <div id="dd">
+  </div>
+  <div id="dbMm" class="easyui-menu" style="width:120px;">
+    <div id="addKey" value="" onclick="editKey(this);" data-options="iconCls:'icon-add'">add</div>
+  </div>
+  <div id="groubMm" class="easyui-menu" style="width:120px;">
+    <div id="keysv" value="" onclick="keysv(this);" data-options="iconCls:'icon-search'">keysv</div>
+  </div>
+  <div id="keyMm" class="easyui-menu" style="width:120px;">
+    <div id="ttlKey" value="" onclick="ttlKey(this);" data-options="iconCls:'icon-search'">ttl</div>
+    <div id="delKey" value="" onclick="delKey(this);" data-options="iconCls:'icon-remove'">del</div>
+    <div id="editKey" value="" onclick="editKey(this);" data-options="iconCls:'icon-edit'">edit</div>
+  </div>
 </body>
 
 </html>
