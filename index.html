@@ -44,17 +44,55 @@
       resize();
       initTab();
       initUIComps();
+      bindSearchEvent();
+      bindCtrlF();
     });
+    function bindCtrlF() {
+      $(document).keypress(function(e){
+        if(e.ctrlKey && e.key == 'f'){
+          $("#jsonSearchInput").val('');
+          var dispay = $(".jsonSearch").css("display");
+          if(dispay=="block"){
+            $(".jsonSearch").css("display","none");
+          }else{
+            $(".jsonSearch").css("display","block");
+            $("#jsonSearchInput").focus()
+          }
 
+        }
+    });
+    }
+    function hideSearch() {
+      $("#jsonSearchInput").val('');
+      $(".jsonSearch").css("display","none");
+    }
+    function bindSearchEvent() {
+      $('#jsonSearchInput').bind('keypress',function(event){
+        if(event.keyCode == "13")
+        {
+          const value = $('#jsonSearchInput').val();
+          if(value==""){
+            return;
+          }
+          findText(value);
+        }
+      });
+
+    }
     function findText(text) {
       $(".json-string").css("background","");
       var spans = $(".json-string");
       if(spans){
+        var count = 0;
         for(var i=0;i<spans.length;i++){
           const spanText = $(spans[i]).html();
           if(spanText.indexOf(text)!=-1){
             $(spans[i]).css("background","pink");
+            count++;
           }
+        }
+        if(count>0){
+          $("#jsonSearchSpan").html(count);
         }
       }
     }
@@ -641,7 +679,6 @@
     }
     function vContentSet(dd) {
       $('#vContent').jsonViewer(dd, { collapsed: false, withQuotes: true, withLinks: false });
-      findText("key");
     }
     function loadDbData(isCluster, profile, pattern, selected, isSearch) {
       var db = $("#databaseSelect").combobox("getValue");
@@ -1221,16 +1258,20 @@
   <style>
     .jsonSearch{
       top: 2px;
-      background-color: #fff000;
-      height: 30px;
+      height: 25px;
       position: fixed;
       width: 20%;
       right: 5px;
     }
     .jsonSearchInput{
-      height: 30px;
-      width: 80%;
-      outline:none
+      height: 25px;
+      width: 70%;
+      outline:none;
+      margin-right: 5px;
+    }
+    .clearImg{
+      display: inline-block;
+      vertical-align: middle;
     }
   </style>
 </head>
@@ -1250,8 +1291,8 @@
       <div id="centerCC" class="easyui-layout" data-options="fit:true">
         <div id="sccCenter" data-options="region:'center',border:false">
           <!-- <div class="easyui-tabs" style="width:100%;height:auto"> -->
-          <div class="jsonSearch"><input class="jsonSearchInput" id="jsonSearch" />
-
+          <div class="jsonSearch" style="display: none"><input class="jsonSearchInput" id="jsonSearchInput" /><span id="jsonSearchSpan">0</span>
+          <img class="clearImg" src="./jquery-easyui/themes/icons/clear.png" onclick="hideSearch()" />
           </div>
           <div id="vContent" class="vContent">
             <br>
