@@ -118,11 +118,11 @@
 
     function replaceSearchValue(span,color,text) {
       var value = $(span).html();
-      if(value.indexOf("<span>")==-1){
+      if(value.indexOf(text+"</span>")==-1){
         var newValue = value.replace(text,"<span style='background-color:"+color+"'>"+text+"</span>");
         $(span).html(newValue);
       }else{
-        var newValue = value.replace(/background-color:.*?'/,"background-color:"+color+"'");
+        var newValue = value.replace(/background-color:.*?"/,"background-color:"+color+"\"");
         $(span).html(newValue);
       }
 
@@ -199,10 +199,13 @@
       searchArr = new Array();
       searchMap = new Map();
       $(".json-string").css("background", "");
-      var spans = $(".json-string");
+      var spans = $(".json-document").find("span")
       if (spans) {
         var count = 0;
         for (var i = 0; i < spans.length; i++) {
+          if($(spans[i]).children().length>0&&$(spans[i]).children().html().indexOf(text)!=-1){
+            continue;
+          }
           const spanText = $(spans[i]).html();
           if (spanText.indexOf(text) != -1) {
            // $(spans[i]).css("background", "pink");
