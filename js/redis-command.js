@@ -607,7 +607,10 @@ const command =function(profile,cmd,args){
                 delKeysInCluster(currentRedis,true,keyArr,profile).then(function(data){
                   var sum = 0;
                   for(var i=0;i<data.length;i++){
-                    sum=sum+data[i][0][1];
+                    var arrs = data[i];
+                    for(var j=0;j<arrs.length;j++){
+                      sum = sum+arrs[j][1]
+                    }
                   }
                   resolve({err:false,res:sum});
                 },function(e){
