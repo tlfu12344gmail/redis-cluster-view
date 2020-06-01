@@ -81,28 +81,28 @@
           if (searchMap != null && searchMap.has(value)) {
             searchIndex++;
             var spanOArr = searchMap.get(value);
-            if(searchIndex>=spanOArr.length){
-              searchIndex=0;
+            if (searchIndex >= spanOArr.length) {
+              searchIndex = 0;
             }
             var spanO = spanOArr[searchIndex];
             if (spanO.isUI) {
-              $('#sccCenter').scrollTop($(spanO.span)[0].offsetTop-getSccMid());
+              $('#sccCenter').scrollTop($(spanO.span)[0].offsetTop - getSccMid());
             } else {
               $("#container" + currentTabIndex).scrollTop(($(spanO.span)[0].offsetTop - getContainMid()));
             }
-            $("#jsonSearchSpan").html(searchIndex+1+"/" + spanOArr.length);
-            replaceSearchValue(spanO.span,"red",value);
-           // $(spanO.span).css("background", "red");
-            var last = searchIndex-1;
-            if(last>=0){
-              replaceSearchValue(spanOArr[last].span,"pink",value);
-            }else{
-              if(spanOArr.length==1){
-                replaceSearchValue(spanOArr[spanOArr.length-1].span,"red",value);
-               // $(spanOArr[spanOArr.length-1].span).css("background", "red");
-              }else{
-                replaceSearchValue(spanOArr[spanOArr.length-1].span,"pink",value);
-               // $(spanOArr[spanOArr.length-1].span).css("background", "pink");
+            $("#jsonSearchSpan").html(searchIndex + 1 + "/" + spanOArr.length);
+            replaceSearchValue(spanO.span, "red", value);
+            // $(spanO.span).css("background", "red");
+            var last = searchIndex - 1;
+            if (last >= 0) {
+              replaceSearchValue(spanOArr[last].span, "pink", value);
+            } else {
+              if (spanOArr.length == 1) {
+                replaceSearchValue(spanOArr[spanOArr.length - 1].span, "red", value);
+                // $(spanOArr[spanOArr.length-1].span).css("background", "red");
+              } else {
+                replaceSearchValue(spanOArr[spanOArr.length - 1].span, "pink", value);
+                // $(spanOArr[spanOArr.length-1].span).css("background", "pink");
               }
             }
 
@@ -116,27 +116,29 @@
 
     }
 
-    function replaceSearchValue(span,color,text) {
+    function replaceSearchValue(span, color, text) {
       var value = $(span).html();
-      if(value.indexOf(text+"</span>")==-1){
-        var newValue = value.replace(text,"<span style='background-color:"+color+"'>"+text+"</span>");
+      if (value.indexOf(text + "</span>") == -1) {
+        var newValue = value.replace(text, "<span style='background-color:" + color + "'>" + text + "</span>");
         $(span).html(newValue);
-      }else{
-        var newValue = value.replace(/background-color:.*?"/,"background-color:"+color+"\"");
+      } else {
+        var newValue = value.replace(/background-color:.*?"/, "background-color:" + color + "\"");
         $(span).html(newValue);
       }
 
-
     }
+
     function getSccMid() {
-     var h=  $("#sccCenter").css('height').replace("px","");
-     return h/2
+      var h = $("#sccCenter").css('height').replace("px", "");
+      return h / 2
     }
+
     function getContainMid() {
-      var h=  $("#container" + currentTabIndex).css('height').replace("px","");
-      return h/2
+      var h = $("#container" + currentTabIndex).css('height').replace("px", "");
+      return h / 2
 
     }
+
     function bindCtrlSearchEvent() {
       $('#jsonSearchInput').bind('keypress', function (event) {
         if (event.ctrlKey && event.key == "l") {
@@ -147,27 +149,27 @@
           if (searchMap != null && searchMap.has(value)) {
             searchIndex--;
             var spanOArr = searchMap.get(value);
-            if(searchIndex<0){
-              searchIndex=spanOArr.length-1;
+            if (searchIndex < 0) {
+              searchIndex = spanOArr.length - 1;
             }
             var spanO = spanOArr[searchIndex];
             if (spanO.isUI) {
-              $('#sccCenter').scrollTop($(spanO.span)[0].offsetTop-getSccMid());
+              $('#sccCenter').scrollTop($(spanO.span)[0].offsetTop - getSccMid());
             } else {
               $("#container" + currentTabIndex).scrollTop(($(spanO.span)[0].offsetTop - getContainMid()));
             }
-            $("#jsonSearchSpan").html(searchIndex+1+"/" + spanOArr.length);
-            replaceSearchValue(spanO.span,"red",value);
-            var last = searchIndex+1;
-            if(last>spanOArr.length){
+            $("#jsonSearchSpan").html(searchIndex + 1 + "/" + spanOArr.length);
+            replaceSearchValue(spanO.span, "red", value);
+            var last = searchIndex + 1;
+            if (last > spanOArr.length) {
               //$(spanOArr[0].span).css("background", "pink");
-              replaceSearchValue(spanOArr[0].span,"pink",value);
-            }else{
-              if(spanOArr.length==1){
-                replaceSearchValue(spanOArr[spanOArr.length-1].span,"red",value);
-               // $(spanOArr[spanOArr.length-1].span).css("background", "red");
-              }else{
-                replaceSearchValue(spanOArr[last].span,"pink",value);
+              replaceSearchValue(spanOArr[0].span, "pink", value);
+            } else {
+              if (spanOArr.length == 1) {
+                replaceSearchValue(spanOArr[spanOArr.length - 1].span, "red", value);
+                // $(spanOArr[spanOArr.length-1].span).css("background", "red");
+              } else {
+                replaceSearchValue(spanOArr[last].span, "pink", value);
                 //$(spanOArr[last].span).css("background", "pink");
               }
             }
@@ -188,9 +190,8 @@
       searchMap = null;
       searchIndex = 0;
       $("#jsonSearchSpan").html("0/0");
-      $(".json-string span").each(function(){
-        $(this).css("background","");
-
+      $(".json-string span").each(function () {
+        $(this).css("background", "");
 
       });
     }
@@ -203,22 +204,22 @@
       if (spans) {
         var count = 0;
         for (var i = 0; i < spans.length; i++) {
-          if($(spans[i]).children().length>0&&$(spans[i]).children().html().indexOf(text)!=-1){
+          if ($(spans[i]).children().length > 0 && $(spans[i]).children().html().indexOf(text) != -1) {
             continue;
           }
           const spanText = $(spans[i]).html();
           if (spanText.indexOf(text) != -1) {
-           // $(spans[i]).css("background", "pink");
-            replaceSearchValue(spans[i],"pink",text);
+            // $(spans[i]).css("background", "pink");
+            replaceSearchValue(spans[i], "pink", text);
             const isUI = $(spans[i]).parents("#vContent").length > 0;
             var spanO = {};
             spanO.span = $(spans[i]);
             spanO.isUI = isUI;
             searchArr.push(spanO);
             if (count == 0) {
-              replaceSearchValue(spans[i],"red",text);
+              replaceSearchValue(spans[i], "red", text);
               if ($(spans[i]).parents("#vContent").length > 0) {
-                $('#sccCenter').scrollTop($(spans[i])[0].offsetTop-getSccMid());
+                $('#sccCenter').scrollTop($(spans[i])[0].offsetTop - getSccMid());
               } else {
                 $("#container" + currentTabIndex).scrollTop(($(spans[i])[0].offsetTop - getContainMid()));
               }
@@ -228,7 +229,7 @@
         }
         if (count > 0) {
           $("#jsonSearchSpan").html("1/" + count);
-        }else{
+        } else {
           $("#jsonSearchSpan").html("0/0");
         }
 
@@ -236,7 +237,7 @@
           searchMap.set(text, searchArr);
         }
 
-      }else{
+      } else {
         $("#jsonSearchSpan").html("0/0");
       }
     }
