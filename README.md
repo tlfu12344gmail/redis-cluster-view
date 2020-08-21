@@ -1,4 +1,11 @@
 # redis-cluster-view
+## 开发背景
+- 目前主流的client的terminal对集群支持不好，像模糊查询只能查询一个节点。
+- 没有批量模糊删除功能
+- 没有批量导出功能
+- 没有批量查询value功能
+
+
 1.UI只提供简单的查询，并且只展示部分key(默认10000，每个分组为1000)，可以用模糊查询去找相关的key集合。推荐使用terminal,同时也熟悉redis的命令，注意：terminal是查所有的值.<br>
           <br>
 2.keys命令是用scan实现，自定义keysc和keysv命令，keysv命令是用scan和pipeline实现.<br>
