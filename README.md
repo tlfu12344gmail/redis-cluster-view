@@ -50,3 +50,6 @@ Each platform can only have its own package
 version:1.1.0
 链接: https://pan.baidu.com/s/1gERNGz-Ght37BJmUMGjE9A 提取码: 9nej
 qq群号:942050383
+
+## License
+MIT

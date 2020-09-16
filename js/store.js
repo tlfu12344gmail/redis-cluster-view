@@ -8,7 +8,7 @@ var Store = Store || function () {
     set: function (k, v) {
       store.set(k, v);
     },
-    del: function (k, v) {
+    del: function (k) {
       store.delete(k);
     }
   }

@@ -9,7 +9,6 @@ let mainWindow
 function createWindow () {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    icon: './img/redis-open.png',
     width: 1000,
     height: 700,
     webPreferences: {
@@ -17,9 +16,9 @@ function createWindow () {
       nodeIntegration: true
     }
   })
-  //console.log(app.getPath('userData'));
+  console.log(app.getPath('userData'));
   //mainWindow.webContents.openDevTools();
-  mainWindow.loadURL('./edit.html');
+  //mainWindow.loadURL('./edit.html');
   // and load the index.html of the app.
   mainWindow.loadFile('index.html')
 
