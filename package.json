@@ -33,7 +33,7 @@
   "author": "tlfu",
   "license": "CC0-1.0",
   "devDependencies": {
-    "electron": "7.1.9",
+    "electron": "9.2.1",
     "electron-builder": "^22.3.2"
   },
   "dependencies": {
